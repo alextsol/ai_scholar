@@ -4,18 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scholar Search</title>
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   <style>
-    /* Dark mode styles */
-    body.dark-mode {
-      background-color: #121212;
-      color: #e0e0e0;
-    }
-    .navbar.dark-mode {
-      background-color: #1f1f1f !important;
-    }
     /* Loader overlay styles */
     #loader-overlay {
       position: fixed;
@@ -42,7 +33,7 @@
     </div>
   </nav>
   
-  <!-- Loader overlay -->
+  <!-- Loader Overlay -->
   <div id="loader-overlay">
     <div class="spinner-border text-light" role="status">
       <span class="visually-hidden">Loading...</span>
@@ -50,6 +41,7 @@
   </div>
   
   <div class="container my-5">
+    <!-- Bias Report -->
     {% if bias_report %}
       <div class="alert alert-info mt-3">
         <h5>Bias Report (by source):</h5>
@@ -85,7 +77,6 @@
             </div>
           </div>
         </form>
-        
         {% if chatbot_response %}
           <div class="card">
             <div class="card-header">
@@ -100,34 +91,7 @@
     </div>
   </div>
   
-  <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Dark mode persistence using localStorage
-    const darkModeToggle = document.getElementById("darkModeToggle");
-    const body = document.body;
-
-    // Check stored preference on load
-    if (localStorage.getItem("darkMode") === "true") {
-      body.classList.add("dark-mode");
-      darkModeToggle.checked = true;
-    }
-
-    darkModeToggle.addEventListener("change", function() {
-      if (this.checked) {
-        body.classList.add("dark-mode");
-        localStorage.setItem("darkMode", "true");
-      } else {
-        body.classList.remove("dark-mode");
-        localStorage.setItem("darkMode", "false");
-      }
-    });
-
-    // Show loader overlay on form submission
-    const searchForm = document.getElementById("searchForm");
-    searchForm.addEventListener("submit", function() {
-      document.getElementById("loader-overlay").style.display = "flex";
-    });
-  </script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
