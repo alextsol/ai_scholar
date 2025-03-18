@@ -6,9 +6,7 @@ from config import (
     SEMANTIC_SCHOLAR_API_URL,
     CROSSREF_API_URL,
     CORE_API_URL,
-    IEEE_API_URL,
     CORE_API_KEY,
-    IEEE_API_KEY
 )
 
 def format_items(items, mapping):
@@ -30,7 +28,15 @@ def semantic_scholar_search(query, limit=10):
     response = requests.get(SEMANTIC_SCHOLAR_API_URL, params=params)
     if response.status_code != 200:
         return f"Error: Unable to fetch papers (Status Code: {response.status_code})"
-    data = response.json().get('data', [])
+    
+    json_response = response.json()
+    data = json_response.get('data', [])
+    
+    # Ensure data is a list and filter out non-dictionary items.
+    if not isinstance(data, list):
+        return f"Unexpected data format: {json_response}"
+    
+    data = [item for item in data if isinstance(item, dict)]
     
     if not data:
         return []
@@ -38,11 +44,14 @@ def semantic_scholar_search(query, limit=10):
     mapping = {
         'title': lambda item: item.get('title', 'No title'),
         'abstract': lambda item: item.get('abstract', 'No abstract available'),
-        'authors': lambda item: ', '.join([author.get('name', 'Unknown') for author in item.get('authors', [])]),
+        'authors': lambda item: ', '.join(
+            [author.get('name', 'Unknown') for author in item.get('authors', []) if isinstance(author, dict)]
+        ),
         'year': lambda item: item.get('year', 'Unknown year'),
         'url': lambda item: item.get('url', 'No URL available'),
         'source': lambda item: "semantic_scholar"
     }
+    
     return format_items(data, mapping)
 
 def crossref_search(query, limit=10):
@@ -76,33 +85,6 @@ def core_search(query, limit=10):
     extractor = lambda r: r.json().get('results', [])
     return generic_requests_search(CORE_API_URL, params, mapping, headers=headers, extractor=extractor)
 
-def ieee_search(query, limit=10):
-    params = {
-        "apikey": IEEE_API_KEY,
-        "format": "json",
-        "querytext": query,
-        "max_records": limit
-    }
-    mapping = {
-        'title': lambda item: str(item.get('title', 'No title')),
-        'abstract': lambda item: str(item.get('abstract', 'No abstract available')),
-        'authors': lambda item: ', '.join(
-            author.get('name', 'Unknown') if isinstance(author, dict) else str(author)
-            for author in item.get('authors', [])
-        ),
-        'year': lambda item: str(item.get('publicationYear', 'Unknown year')),
-        'url': lambda item: str(item.get('pdf_url', 'No URL available')),
-        'source': lambda item: "ieee"
-    }
-
-    def extractor(r):
-        data = r.json().get('articles', [])
-        if isinstance(data, list):
-            return [item for item in data if isinstance(item, dict)]
-        return []
-    return generic_requests_search(IEEE_API_URL, params, mapping, extractor=extractor)
-
-
 def arxiv_search(query, limit=10):
     search = arxiv.Search(query=query, max_results=limit, sort_by=arxiv.SortCriterion.Relevance)
     results = list(search.results())
@@ -133,7 +115,6 @@ BACKENDS = {
     "arxiv": arxiv_search,
     "crossref": crossref_search,
     "core": core_search,
-#    "ieee": ieee_search,
 }
 
 def search_papers(query, limit=10, backend=None):

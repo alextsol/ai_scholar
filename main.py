@@ -1,15 +1,12 @@
-import os
-from dotenv import load_dotenv
-from flask import Flask, render_template, request, session, redirect, url_for
-from paper_search import search_papers
-from paper_aggregator import aggregate_and_rank_papers, check_bias_in_aggregated_papers
-from analytics import log_search
+from flask import Flask, render_template, request
 import json
-
-load_dotenv()
+from paper_search import search_papers
+from paper_aggregator import aggregate_and_rank_papers
+from fairness import compute_fairness_metrics
+from analytics import log_search
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", os.urandom(24))
+app.secret_key = "your_secret_key_here"  # For development only; use env var in production
 
 def group_results_by_source(papers, default_source="Unknown"):
     groups = {}
@@ -23,61 +20,46 @@ def group_results_by_source(papers, default_source="Unknown"):
 def index():
     bias_report = None
     chatbot_response = ""
-    last_search = None
-
+    query = ""
+    selected_backend = ""
+    
     if request.method == 'POST':
-        user_input = request.form['query']
-        mode = request.form.get('mode')
-        backend = request.form.get('backend')
+        query = request.form['query']
+        mode = request.form.get('mode')  # "regular" or "aggregate"
+        selected_backend = request.form.get('backend')
         ip_address = request.remote_addr
 
-        log_search(user_input, ip_address)
+        log_search(query, ip_address)
 
         if mode == "aggregate":
-            papers = aggregate_and_rank_papers(user_input)
+            papers = aggregate_and_rank_papers(query)
         else:
-            papers = search_papers(user_input, backend=backend)
-
-        # Compute bias report using your helper function
-        bias_report = check_bias_in_aggregated_papers(papers)
+            papers = search_papers(query, backend=selected_backend)
         
-        # Save the complete last search in the session
-        last_search = {
-            "query": user_input,
-            "results": papers
-        }
-        session['last_search'] = last_search
-
-        # Build your chatbot response (grouping by source, etc.)
-        # ... your code to build chatbot_response ...
-
-        return render_template(
-            'index.html',
-            query="",
-            chatbot_response=chatbot_response,
-            selected_backend=backend,
-            last_search=last_search,
-            bias_report=json.dumps(bias_report, indent=2) if bias_report else None
-        )
-    else:
-        last_search = session.get('last_search', None)
-        return render_template(
-            'index.html',
-            query="",
-            chatbot_response="",
-            selected_backend="",
-            last_search=last_search,
-            bias_report=None
-        )
-
-@app.route('/last_search', methods=['GET'])
-def last_search_page():
-    last_search = session.get('last_search', None)
-    if not last_search:
-        return "No previous search found.", 404
-    grouped_results = group_results_by_source(last_search.get("results", []))
-    return render_template('last_search.html', last_search=last_search, grouped_results=grouped_results)
-
+        # Compute bias report on the current search results
+        bias_report = compute_fairness_metrics(papers)
+        
+        # Group results by source for display (optional)
+        grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
+        chatbot_response = ""
+        for src, group in grouped_results.items():
+            chatbot_response += f"<h4>{src} results:</h4><ul>"
+            for paper in group:
+                chatbot_response += (
+                    f"<li><strong>{paper.get('title', 'No title')}</strong> "
+                    f"({paper.get('year', 'Unknown year')})<br>"
+                    f"Authors: {paper.get('authors', 'No authors')}<br>"
+                    f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li><br>"
+                )
+            chatbot_response += "</ul>"
+    
+    return render_template(
+        'index.html',
+        query="",
+        chatbot_response=chatbot_response,
+        selected_backend=selected_backend,
+        bias_report=json.dumps(bias_report, indent=2) if bias_report else None
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

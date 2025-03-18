@@ -15,7 +15,7 @@
   </nav>
   
   <div class="container my-5">
-    <!-- Bias report displayed at the top -->
+    <!-- Display Bias Report at the top, if available -->
     {% if bias_report %}
       <div class="alert alert-info mt-3">
         <h5>Bias Report (by source):</h5>
@@ -24,8 +24,7 @@
     {% endif %}
     
     <div class="row">
-      <!-- Main content column -->
-      <div class="col-md-8">
+      <div class="col-md-12">
         <form method="post" class="mb-4">
           <div class="input-group mb-3">
             <input type="text" class="form-control" name="query" placeholder="Enter your search query" value="{{ query }}" required>
@@ -38,7 +37,6 @@
               <option value="arxiv" {% if selected_backend == 'arxiv' %}selected{% endif %}>arXiv</option>
               <option value="crossref" {% if selected_backend == 'crossref' %}selected{% endif %}>CrossRef</option>
               <option value="core" {% if selected_backend == 'core' %}selected{% endif %}>CORE</option>
-              <option value="ieee" {% if selected_backend == 'ieee' %}selected{% endif %}>IEEE Xplore</option>
             </select>
           </div>
           <div class="mb-3">
@@ -53,6 +51,7 @@
             </div>
           </div>
         </form>
+        
         {% if chatbot_response %}
           <div class="card">
             <div class="card-header">
@@ -60,19 +59,6 @@
             </div>
             <div class="card-body">
               <div class="card-text">{{ chatbot_response|safe }}</div>
-            </div>
-          </div>
-        {% endif %}
-      </div>
-      
-      <!-- Sidebar column -->
-      <div class="col-md-4">
-        {% if last_search %}
-          <div class="card">
-            <div class="card-header">Last Search Summary</div>
-            <div class="card-body">
-              <p><strong>Query:</strong> {{ last_search.query }}</p>
-              <a href="{{ url_for('last_search_page') }}" class="btn btn-secondary btn-sm">View Full Previous Search</a>
             </div>
           </div>
         {% endif %}
