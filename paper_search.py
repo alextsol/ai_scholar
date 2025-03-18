@@ -124,3 +124,4 @@ def search_papers(query, limit=10, backend=None):
     if backend not in BACKENDS:
         return f"Error: Unknown backend '{backend}' specified."
     return BACKENDS[backend](query, limit)
+
