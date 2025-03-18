@@ -53,7 +53,7 @@ def index():
     
     return render_template(
         'index.html',
-        query="",
+        query=query,
         chatbot_response=chatbot_response,
         selected_backend=selected_backend,
         bias_report=json.dumps(bias_report, indent=2) if bias_report else None

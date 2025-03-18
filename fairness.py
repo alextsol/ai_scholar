@@ -2,13 +2,6 @@ import numpy as np
 from fairlearn.metrics import MetricFrame
 
 def compute_fairness_metrics(papers):
-    """
-    Computes fairness metrics using Fairlearn's MetricFrame.
-    Each paper is given a dummy quality score of 1.0 (replace with your metric if available).
-    The paper's 'source' field is used as the sensitive attribute.
-    Returns a dictionary mapping each source to its mean score.
-    """
-    # Filter out any items that are not dictionaries
     valid_papers = [paper for paper in papers if isinstance(paper, dict)]
     if not valid_papers:
         return {}

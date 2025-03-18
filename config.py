@@ -12,8 +12,8 @@ DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "semantic_scholar")
 CORE_API_KEY = os.getenv("CORE_API_KEY", "QD9qUjnImpTE1MxFZWvlkRXyBt8ShA54")
 #10,000 tokens per day
 
-DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/rank")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-e640d7b0cee041048012470d986f0eae")
+OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
 
 # GeoIP Database path
 GEOIP_DATABASE_PATH = os.getenv("GEOIP_DATABASE_PATH", "data/GeoLite2-City.mmdb")
