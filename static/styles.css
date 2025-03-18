@@ -1,10 +1,25 @@
+/* Default (light) mode styles */
 body {
-    background-color: #f8f9fa;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
+    color: #212529;
 }
-.navbar {
-    margin-bottom: 20px;
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
 }
-.card {
-    margin-top: 20px;
+
+/* Optional: Adjust Bootstrap components in dark mode */
+.navbar.dark-mode {
+    background-color: #1f1f1f !important;
+}
+
+/* Loader styling if you need custom adjustments (Bootstrap provides a spinner) */
+#loader {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1050;
 }
