@@ -4,3 +4,4 @@ geoip2
 arxiv
 scholarly
 python-dotenv
+openai

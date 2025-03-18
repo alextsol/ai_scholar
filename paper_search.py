@@ -1,6 +1,7 @@
 import requests
 import arxiv
 from scholarly import scholarly
+from collections import Counter
 from config import (
     SEMANTIC_SCHOLAR_API_URL,
     CROSSREF_API_URL,
@@ -39,7 +40,8 @@ def semantic_scholar_search(query, limit=10):
         'abstract': lambda item: item.get('abstract', 'No abstract available'),
         'authors': lambda item: ', '.join([author.get('name', 'Unknown') for author in item.get('authors', [])]),
         'year': lambda item: item.get('year', 'Unknown year'),
-        'url': lambda item: item.get('url', 'No URL available')
+        'url': lambda item: item.get('url', 'No URL available'),
+        'source': lambda item: "semantic_scholar"
     }
     return format_items(data, mapping)
 
@@ -51,7 +53,8 @@ def crossref_search(query, limit=10):
         'authors': lambda item: ', '.join([f"{author.get('given', '')} {author.get('family', '')}".strip() 
                                             for author in item.get('author', [])]),
         'year': lambda item: item.get('issued', {}).get('date-parts', [[None]])[0][0],
-        'url': lambda item: item.get('URL', 'No URL available')
+        'url': lambda item: item.get('URL', 'No URL available'),
+        'source': lambda item: "crossref"
     }
     extractor = lambda r: r.json()['message']['items']
     return generic_requests_search(CROSSREF_API_URL, params, mapping, extractor=extractor)
@@ -62,9 +65,13 @@ def core_search(query, limit=10):
     mapping = {
         'title': lambda item: item.get('title', 'No title'),
         'abstract': lambda item: item.get('abstract', 'No abstract available'),
-        'authors': lambda item: ', '.join(item.get('authors', [])),
+         'authors': lambda item: ', '.join([
+            author.get('name', 'Unknown') if isinstance(author, dict) else str(author)
+            for author in item.get('authors', [])
+        ]),
         'year': lambda item: item.get('yearPublished', 'Unknown year'),
-        'url': lambda item: item.get('downloadUrl', 'No URL available')
+        'url': lambda item: item.get('downloadUrl', 'No URL available'),
+        'source': lambda item: "core"
     }
     extractor = lambda r: r.json().get('results', [])
     return generic_requests_search(CORE_API_URL, params, mapping, headers=headers, extractor=extractor)
@@ -77,14 +84,24 @@ def ieee_search(query, limit=10):
         "max_records": limit
     }
     mapping = {
-        'title': lambda item: item.get('title', 'No title'),
-        'abstract': lambda item: item.get('abstract', 'No abstract available'),
-        'authors': lambda item: ', '.join(item.get('authors', [])),
-        'year': lambda item: item.get('publicationYear', 'Unknown year'),
-        'url': lambda item: item.get('pdf_url', 'No URL available')
+        'title': lambda item: str(item.get('title', 'No title')),
+        'abstract': lambda item: str(item.get('abstract', 'No abstract available')),
+        'authors': lambda item: ', '.join(
+            author.get('name', 'Unknown') if isinstance(author, dict) else str(author)
+            for author in item.get('authors', [])
+        ),
+        'year': lambda item: str(item.get('publicationYear', 'Unknown year')),
+        'url': lambda item: str(item.get('pdf_url', 'No URL available')),
+        'source': lambda item: "ieee"
     }
-    extractor = lambda r: r.json().get('articles', [])
+
+    def extractor(r):
+        data = r.json().get('articles', [])
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+        return []
     return generic_requests_search(IEEE_API_URL, params, mapping, extractor=extractor)
+
 
 def arxiv_search(query, limit=10):
     search = arxiv.Search(query=query, max_results=limit, sort_by=arxiv.SortCriterion.Relevance)
@@ -106,7 +123,8 @@ def arxiv_search(query, limit=10):
         'abstract': lambda r: r.summary,
         'authors': lambda r: ', '.join([author.name for author in r.authors]),
         'year': lambda r: r.published.year,
-        'url': lambda r: r.pdf_url
+        'url': lambda r: r.pdf_url,
+        'source': lambda item: "arxiv"
     }
     return format_items(valid_results, mapping)
 
@@ -115,7 +133,7 @@ BACKENDS = {
     "arxiv": arxiv_search,
     "crossref": crossref_search,
     "core": core_search,
-    "ieee": ieee_search,
+#    "ieee": ieee_search,
 }
 
 def search_papers(query, limit=10, backend=None):

@@ -15,11 +15,20 @@
   </nav>
   
   <div class="container my-5">
-    <div class="row justify-content-center">
+    <!-- Bias report displayed at the top -->
+    {% if bias_report %}
+      <div class="alert alert-info mt-3">
+        <h5>Bias Report (by source):</h5>
+        <pre>{{ bias_report }}</pre>
+      </div>
+    {% endif %}
+    
+    <div class="row">
+      <!-- Main content column -->
       <div class="col-md-8">
         <form method="post" class="mb-4">
           <div class="input-group mb-3">
-            <input type="text" class="form-control" name="query" placeholder="Enter your search query" required>
+            <input type="text" class="form-control" name="query" placeholder="Enter your search query" value="{{ query }}" required>
             <button class="btn btn-primary" type="submit">Search</button>
           </div>
           <div class="mb-3">
@@ -36,15 +45,11 @@
             <label class="form-label">Search Mode:</label>
             <div class="form-check">
               <input class="form-check-input" type="radio" name="mode" id="modeRegular" value="regular" checked>
-              <label class="form-check-label" for="modeRegular">
-                Regular Search
-              </label>
+              <label class="form-check-label" for="modeRegular">Regular Search</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="radio" name="mode" id="modeAggregate" value="aggregate">
-              <label class="form-check-label" for="modeAggregate">
-                Aggregate & Rank Results
-              </label>
+              <label class="form-check-label" for="modeAggregate">Aggregate & Rank Results</label>
             </div>
           </div>
         </form>
@@ -55,6 +60,19 @@
             </div>
             <div class="card-body">
               <div class="card-text">{{ chatbot_response|safe }}</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      
+      <!-- Sidebar column -->
+      <div class="col-md-4">
+        {% if last_search %}
+          <div class="card">
+            <div class="card-header">Last Search Summary</div>
+            <div class="card-body">
+              <p><strong>Query:</strong> {{ last_search.query }}</p>
+              <a href="{{ url_for('last_search_page') }}" class="btn btn-secondary btn-sm">View Full Previous Search</a>
             </div>
           </div>
         {% endif %}
