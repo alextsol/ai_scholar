@@ -1,48 +1,28 @@
-// Dark Mode Toggle with Persistence
-function initDarkModeToggle(toggleId) {
-    const toggle = document.getElementById(toggleId);
-    const body = document.body;
-    // Check stored preference in localStorage
-    if (localStorage.getItem("darkMode") === "true") {
-      body.classList.add("dark-mode");
-      toggle.checked = true;
+// main.js
+document.addEventListener("DOMContentLoaded", () => {
+  initDarkModeToggle("darkModeToggle");
+
+  function ensureSearchHistoryLoaded(callback) {
+    if (typeof SearchHistory !== "undefined") {
+      callback();
+    } else {
+      setTimeout(() => ensureSearchHistoryLoaded(callback), 100);
     }
-    toggle.addEventListener("change", function () {
-      if (this.checked) {
-        body.classList.add("dark-mode");
-        localStorage.setItem("darkMode", "true");
-      } else {
-        body.classList.remove("dark-mode");
-        localStorage.setItem("darkMode", "false");
-      }
+  }
+
+  ensureSearchHistoryLoaded(() => {
+    SearchHistory.updateHistoryTabs();
+    console.log("SearchHistory updated.");
+  });
+
+  const searchForm = document.getElementById("searchForm");
+  if (searchForm) {
+    searchForm.addEventListener("submit", () => {
+      Loader.showLoader("loader-overlay");
     });
   }
-  
-  // Loader Overlay Functions
-  function showLoader(loaderId) {
-    const loader = document.getElementById(loaderId);
-    if (loader) {
-      loader.style.display = "flex";
-    }
+
+  if (window.currentQuery && window.currentResultsHTML && typeof SearchHistory !== "undefined") {
+    SearchHistory.addSearchHistory(window.currentQuery, window.currentResultsHTML);
   }
-  
-  function hideLoader(loaderId) {
-    const loader = document.getElementById(loaderId);
-    if (loader) {
-      loader.style.display = "none";
-    }
-  }
-  
-  // Initialize functions on DOMContentLoaded
-  document.addEventListener("DOMContentLoaded", function () {
-    initDarkModeToggle("darkModeToggle");
-  
-    // Show loader on form submission
-    const searchForm = document.getElementById("searchForm");
-    if (searchForm) {
-      searchForm.addEventListener("submit", function () {
-        showLoader("loader-overlay");
-      });
-    }
-  });
-  
+});
