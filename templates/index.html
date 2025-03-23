@@ -96,19 +96,18 @@
     </div>
   </div>
   
-  <!-- Include JS Files in the proper order -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/darkmode.js') }}"></script>
   <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
   <script src="{{ url_for('static', filename='js/history.js') }}"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   
-  <!-- Set global variables for current search, if any -->
   {% if chatbot_response and query %}
-  <script>
-    window.currentQuery = "{{ query }}";
-    window.currentResultsHTML = {{ chatbot_response|tojson }};
-  </script>
+    <script>
+      window.currentQuery = "{{ query }}";
+      window.currentResultsHTML = {{ chatbot_response|tojson|safe }};
+      window.currentSource = "{{ 'aggregate' if mode == 'aggregate' else selected_backend }}";
+    </script>
   {% endif %}
 </body>
 </html>

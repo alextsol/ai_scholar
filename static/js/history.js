@@ -4,34 +4,66 @@ function getSearchHistory() {
     const history = localStorage.getItem("searchHistory");
     return history ? JSON.parse(history) : [];
   }
+
   function saveSearchHistory(history) {
     localStorage.setItem("searchHistory", JSON.stringify(history));
   }
-  function addSearchHistory(query, resultsHTML) {
+
+  function addSearchHistory(query, resultsHTML, source) {
     let history = getSearchHistory();
-    history.unshift({ query, resultsHTML });
+    history.unshift({ query, resultsHTML, source });
     history = history.slice(0, 10);
     saveSearchHistory(history);
     updateHistoryTabs();
   }
+
   function clearSearchHistory() {
     localStorage.removeItem("searchHistory");
     updateHistoryTabs();
   }
+  
   function updateHistoryTabs() {
     const history = getSearchHistory();
     const tabsContainer = document.getElementById("searchHistoryTabs");
     if (!tabsContainer) return;
     tabsContainer.innerHTML = "";
+    
+    // Map each source to its icon URL (adjust paths as needed)
+    const iconMapping = {
+      semantic_scholar: "/static/icons/semantic.png",
+      arxiv: "/static/icons/arxiv.png",
+      crossref: "/static/icons/cross.png",
+      core: "/static/icons/core.png",
+      aggregate: "/static/icons/aggregate.png"  // New icon for aggregate searches
+    };
+  
     history.forEach((item, index) => {
       const li = document.createElement("li");
-      li.className = "list-group-item";
+      li.className = "list-group-item d-flex align-items-center";
       li.style.cursor = "pointer";
-      li.textContent = item.query;
+      
+      // Use the source from the entry, defaulting to a normal backend if not provided.
+      const src = item.source || "default";
+      if (iconMapping[src]) {
+        const img = document.createElement("img");
+        img.src = iconMapping[src];
+        img.alt = src;
+        img.style.width = "16px";
+        img.style.height = "16px";
+        img.style.marginRight = "8px";
+        li.appendChild(img);
+      }
+      
+      const span = document.createElement("span");
+      span.textContent = item.query;
+      li.appendChild(span);
+  
       li.addEventListener("click", () => displayHistory(index));
       tabsContainer.appendChild(li);
     });
   }
+  
+  
   function displayHistory(index) {
     const history = getSearchHistory();
     if (index < 0 || index >= history.length) return;
@@ -45,6 +77,7 @@ function getSearchHistory() {
       queryDisplay.textContent = entry.query;
     }
   }
+
   window.SearchHistory = {
     addSearchHistory,
     clearSearchHistory,

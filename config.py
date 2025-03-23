@@ -13,7 +13,7 @@ CORE_API_KEY = os.getenv("CORE_API_KEY", "QD9qUjnImpTE1MxFZWvlkRXyBt8ShA54")
 #10,000 tokens per day
 
 OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
 
 # GeoIP Database path
 GEOIP_DATABASE_PATH = os.getenv("GEOIP_DATABASE_PATH", "data/GeoLite2-City.mmdb")

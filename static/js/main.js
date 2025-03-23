@@ -23,6 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (window.currentQuery && window.currentResultsHTML && typeof SearchHistory !== "undefined") {
-    SearchHistory.addSearchHistory(window.currentQuery, window.currentResultsHTML);
+    SearchHistory.addSearchHistory(currentQuery, currentResultsHTML, currentSource);
   }
 });

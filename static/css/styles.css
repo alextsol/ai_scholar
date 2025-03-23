@@ -10,12 +10,10 @@ body.dark-mode {
     color: #e0e0e0;
 }
 
-/* Optional: Adjust Bootstrap components in dark mode */
 .navbar.dark-mode {
     background-color: #1f1f1f !important;
 }
 
-/* Loader styling if you need custom adjustments (Bootstrap provides a spinner) */
 #loader {
     position: fixed;
     top: 50%;
