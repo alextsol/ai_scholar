@@ -5,3 +5,5 @@ arxiv
 scholarly
 python-dotenv
 openai
+tenacity
+requests-cache

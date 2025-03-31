@@ -49,6 +49,9 @@ def index():
                     f"Authors: {paper.get('authors', 'No authors')}<br>"
                     f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li><br>"
                 )
+                if mode == "aggregate" and paper.get('explanation'):
+                    chatbot_response += f"<em>{paper['explanation']}</em><br>"
+                chatbot_response += "</li><br>"
             chatbot_response += "</ul>"
     
     return render_template(
