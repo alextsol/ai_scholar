@@ -1,12 +1,8 @@
-import requests
 from config import CORE_API_URL, CORE_API_KEY
 
 def search(query, limit=10):
     params = {"q": query, "limit": limit}
     headers = {"Authorization": f"Bearer {CORE_API_KEY}"}
-    
-    # Import helpers from paper_search to avoid circular dependency issues
-    from paper_search import generic_requests_search
     
     mapping = {
         'title': lambda item: item.get('title', 'No title'),
@@ -17,8 +13,15 @@ def search(query, limit=10):
         ),
         'year': lambda item: item.get('yearPublished', 'Unknown year'),
         'url': lambda item: item.get('downloadUrl', 'No URL available'),
-        'source': lambda item: "core"
+        'source': lambda item: "core",
+        'citation': lambda item: item.get('citationCount', 'N/A')
+
     }
     
     extractor = lambda r: r.json().get('results', [])
-    return generic_requests_search(CORE_API_URL, params, mapping, headers=headers, extractor=extractor)
+    return {
+        "url": CORE_API_URL,
+        "params": params,
+        "mapping": mapping,
+        "extractor": extractor
+    }
