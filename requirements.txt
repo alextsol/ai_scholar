@@ -1,9 +1,8 @@
-Flask
-requests
-geoip2
-arxiv
-scholarly
-python-dotenv
-openai
-tenacity
-requests-cache
+arxiv==1.4.5
+fairlearn==0.12.0
+Flask==2.2.5
+geoip2==5.0.0
+numpy==2.2.4
+python-dotenv==1.1.0
+Requests==2.32.3
+tenacity==8.3.0
