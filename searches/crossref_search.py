@@ -1,10 +1,9 @@
-import requests
 from config import CROSSREF_API_URL
+from utils import generic_requests_search
 
 def search(query, limit=10):
     params = {"query": query, "rows": limit}
     
-    from paper_search import format_items, generic_requests_search
     mapping = {
         'title': lambda item: item.get('title', ['No title'])[0],
         'abstract': lambda item: item.get('abstract', 'No abstract available'),
@@ -14,6 +13,7 @@ def search(query, limit=10):
         ]),
         'year': lambda item: item.get('issued', {}).get('date-parts', [[None]])[0][0],
         'url': lambda item: item.get('URL', 'No URL available'),
+        'citation': lambda item: item.get('is-referenced-by-count', 'N/A'),
         'source': lambda item: "crossref"
     }
     extractor = lambda r: r.json()['message']['items']

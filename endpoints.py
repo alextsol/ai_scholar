@@ -37,7 +37,6 @@ def index():
         
         bias_report = compute_fairness_metrics(papers)
         
-        # Group results by source for display
         grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
         chatbot_response = ""
         for src, group in grouped_results.items():
@@ -46,7 +45,8 @@ def index():
                 chatbot_response += (
                     f"<li><strong>{paper.get('title', 'No title')}</strong> "
                     f"({paper.get('year', 'Unknown year')})<br>"
-                    f"Authors: {paper.get('authors', 'No authors')}<br>"
+                    f"<strong>Authors</strong>: {paper.get('authors', 'No authors')}<br>"
+                    f"<strong>Citations</strong>: {paper.get('citation', 'N/A')}<br>"
                     f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li><br>"
                 )
                 if mode == "aggregate" and paper.get('explanation'):
