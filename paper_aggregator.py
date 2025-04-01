@@ -1,6 +1,6 @@
 import json
 import logging
-from ai_ranker import deepseek_rank_papers
+from ai_ranker import ai_ranker
 from paper_search import BACKENDS
 
 logger = logging.getLogger(__name__)
@@ -41,16 +41,11 @@ def rank_and_remove_duplicates(query, papers):
             seen.add(key)
             unique_papers.append(paper)
     
-    ranked = deepseek_rank_papers(query, unique_papers)
+    ranked = ai_ranker(query, unique_papers)
     return ranked
 
 
 def merge_ranked_with_details(ranked, aggregated):
-    """
-    Merge ranked results (which contain only 'title' and 'explanation')
-    with full details from aggregated papers based on matching titles.
-    """
-    # Build a lookup dict with lower-case stripped titles as keys.
     details_by_title = {
         paper.get("title", "").strip().lower(): paper
         for paper in aggregated if isinstance(paper.get("title"), str)
