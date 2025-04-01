@@ -21,19 +21,33 @@ def index():
     chatbot_response = ""
     query = ""
     selected_backend = ""
+    mode =""
+    min_year =""
+    max_year =""
     
     if request.method == 'POST':
         query = request.form['query']
         mode = request.form.get('mode') 
         selected_backend = request.form.get('backend')
         ip_address = request.remote_addr
+        
+        min_year = request.form.get('min_year')
+        max_year = request.form.get('max_year')
+        try:
+            min_year = int(min_year) if min_year else None
+        except ValueError:
+            min_year = None
+        try:
+            max_year = int(max_year) if max_year else None
+        except ValueError:
+            max_year = None
 
         log_search(query, ip_address)
 
         if mode == "aggregate":
             papers = aggregate_and_rank_papers(query)
         else:
-            papers = search_papers(query, backend=selected_backend)
+            papers = search_papers(query, backend=selected_backend, min_year=min_year, max_year=max_year)
         
         bias_report = compute_fairness_metrics(papers)
         
@@ -59,5 +73,8 @@ def index():
         query=query,
         chatbot_response=chatbot_response,
         selected_backend=selected_backend,
+        mode=mode,
+        min_year=min_year,
+        max_year=max_year,
         bias_report=json.dumps(bias_report, indent=2) if bias_report else None
     )

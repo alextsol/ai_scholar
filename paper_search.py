@@ -5,7 +5,6 @@ from searches.core_search import search as core_search
 from config import DEFAULT_SEARCH_BACKEND
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
-
 BACKENDS = {
     "semantic_scholar": semantic_search,
     "arxiv": arxiv_search,
@@ -18,12 +17,17 @@ BACKENDS = {
     wait=wait_fixed(5),           
     retry=retry_if_exception_type(Exception)  
 )
-def search_papers(query, limit=10, backend=None):
+def search_papers(query, limit=10, backend=None, min_year=None, max_year=None):
     if backend is None:
         backend = DEFAULT_SEARCH_BACKEND
     if backend not in BACKENDS:
         return f"Error: Unknown backend '{backend}' specified."
     
-    response = BACKENDS[backend](query, limit)
+    try:
+        response = BACKENDS[backend](query, limit, min_year, max_year)
+    except TypeError:
+        response = BACKENDS[backend](query, limit)
+    
     if isinstance(response, list) and response:
         return response
+    return response

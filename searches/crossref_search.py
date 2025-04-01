@@ -1,8 +1,17 @@
 from config import CROSSREF_API_URL
 from utils import generic_requests_search
 
-def search(query, limit=10):
+
+def search(query, limit=10, min_year=None, max_year=None):
     params = {"query": query, "rows": limit}
+    
+    filters = []
+    if min_year:
+        filters.append(f"from-pub-date:{min_year}")
+    if max_year:
+        filters.append(f"until-pub-date:{max_year}")
+    if filters:
+        params["filter"] = ",".join(filters)
     
     mapping = {
         'title': lambda item: item.get('title', ['No title'])[0],

@@ -48,11 +48,9 @@
           <button id="clearHistoryButton" class="btn btn-secondary btn-sm" onclick="SearchHistory.clearSearchHistory()">Clear</button>
         </div>
         <ul id="searchHistoryTabs" class="list-group">
-          <!-- History tabs will be populated dynamically by history.js -->
         </ul>
       </div>
       
-      <!-- Main Content: Search Form & Results -->
       <div class="col-md-9">
         <form id="searchForm" method="post" class="mb-4">
           <div class="input-group mb-3">
@@ -77,6 +75,14 @@
             <div class="form-check">
               <input class="form-check-input" type="radio" name="mode" id="modeAggregate" value="aggregate">
               <label class="form-check-label" for="modeAggregate">Aggregate & Rank Results</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="yearRange" class="form-label">Year Range:</label>
+            <div class="d-flex align-items-center gap-2">
+              <input type="number" class="form-control form-control-sm w-25" name="min_year" id="minYear" placeholder="Min" value="{{ min_year }}">
+              <span class="mx-1">to</span>
+              <input type="number" class="form-control form-control-sm w-25" name="max_year" id="maxYear" placeholder="Max" value="{{ max_year }}">
             </div>
           </div>
         </form>
@@ -104,7 +110,7 @@
   {% if chatbot_response and query %}
     <script>
       window.currentQuery = "{{ query }}";
-      window.currentResultsHTML = {{ chatbot_response|tojson|safe }};
+      window.currentResultsHTML = "{{ chatbot_response|tojson|safe }}";
       window.currentSource = "{{ 'aggregate' if mode == 'aggregate' else selected_backend }}";
     </script>
   {% endif %}
