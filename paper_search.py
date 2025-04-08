@@ -5,6 +5,8 @@ from searches.core_search import search as core_search
 from config import DEFAULT_SEARCH_BACKEND
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
+from utils import filter_results_by_year
+
 BACKENDS = {
     "semantic_scholar": semantic_search,
     "arxiv": arxiv_search,
@@ -29,5 +31,7 @@ def search_papers(query, limit, backend=None, min_year=None, max_year=None):
         response = BACKENDS[backend](query, limit)
     
     if isinstance(response, list) and response:
+        if backend == "arxiv" and (min_year or max_year):
+            response = filter_results_by_year(response, min_year, max_year)
         return response
     return response

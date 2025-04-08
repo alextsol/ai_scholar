@@ -24,6 +24,7 @@ def index():
     mode =""
     min_year =""
     max_year =""
+    papers=[]
     result_limit = 100
     
     if request.method == 'POST':
@@ -59,26 +60,28 @@ def index():
         
         bias_report = compute_fairness_metrics(papers)
         
-        grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
-        chatbot_response = ""
-        for src, group in grouped_results.items():
-            chatbot_response += f"<h4>{src} results:</h4><ul>"
-            for paper in group:
-                chatbot_response += (
-                    f"<li><strong>{paper.get('title', 'No title')}</strong> "
-                    f"({paper.get('year', 'Unknown year')})<br>"
-                    f"<strong>Authors</strong>: {paper.get('authors', 'No authors')}<br>"
-                    f"<strong>Citations</strong>: {paper.get('citation', 'N/A')}<br>"
-                    f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li></br>"
-                )
-                if mode == "aggregate" and paper.get('explanation'):
-                    chatbot_response += f"<em>{paper['explanation']}</em><br>"
-                chatbot_response += "</li><br>"
-            chatbot_response += "</ul>"
+        if papers:
+            grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
+            chatbot_response = ""
+            for src, group in grouped_results.items():
+                chatbot_response += f"<h4>{src} results:</h4><ul>"
+                for paper in group:
+                    chatbot_response += (
+                        f"<li><strong>{paper.get('title', 'No title')}</strong> "
+                        f"({paper.get('year', 'Unknown year')})<br>"
+                        f"<strong>Authors</strong>: {paper.get('authors', 'No authors')}<br>"
+                        f"<strong>Citations</strong>: {paper.get('citation', 'N/A')}<br>"
+                        f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li></br>"
+                    )
+                    if mode == "aggregate" and paper.get('explanation'):
+                        chatbot_response += f"<em>{paper['explanation']}</em><br>"
+                    chatbot_response += "</li><br>"
+                chatbot_response += "</ul>"
     
     return render_template(
         'index.html',
         query=query,
+        papersCount = len(papers),
         chatbot_response=chatbot_response,
         selected_backend=selected_backend,
         mode=mode,

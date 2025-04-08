@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from key1 import Key1
+from key1 import Key1, coreKey
 
 load_dotenv()  
 
@@ -11,7 +11,7 @@ CORE_API_URL = os.getenv("CORE_API_URL", "https://api.core.ac.uk/v3/search/works
 
 DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "semantic_scholar")
 
-CORE_API_KEY = os.getenv("CORE_API_KEY", "QD9qUjnImpTE1MxFZWvlkRXyBt8ShA54")
+CORE_API_KEY = os.getenv("CORE_API_KEY", coreKey)
 #10,000 tokens per day
 
 OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
