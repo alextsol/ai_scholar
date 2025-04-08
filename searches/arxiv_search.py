@@ -2,7 +2,7 @@ import arxiv
 
 from utils import format_items
 
-def search(query, limit=10):
+def search(query, limit):
     search_obj = arxiv.Search(query=query, max_results=limit, sort_by=arxiv.SortCriterion.Relevance)
     results = list(search_obj.results())
     

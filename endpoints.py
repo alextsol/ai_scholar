@@ -24,6 +24,7 @@ def index():
     mode =""
     min_year =""
     max_year =""
+    result_limit = 100
     
     if request.method == 'POST':
         query = request.form['query']
@@ -33,6 +34,8 @@ def index():
         
         min_year = request.form.get('min_year')
         max_year = request.form.get('max_year')
+        result_limit = request.form.get('result_limit', '100')
+        
         try:
             min_year = int(min_year) if min_year else None
         except ValueError:
@@ -41,13 +44,18 @@ def index():
             max_year = int(max_year) if max_year else None
         except ValueError:
             max_year = None
+            
+        try:
+            result_limit = int(result_limit)
+        except ValueError:
+            result_limit = 100
 
         log_search(query, ip_address)
 
         if mode == "aggregate":
             papers = aggregate_and_rank_papers(query)
         else:
-            papers = search_papers(query, backend=selected_backend, min_year=min_year, max_year=max_year)
+            papers = search_papers(query,result_limit, backend=selected_backend, min_year=min_year, max_year=max_year)
         
         bias_report = compute_fairness_metrics(papers)
         
@@ -76,5 +84,6 @@ def index():
         mode=mode,
         min_year=min_year,
         max_year=max_year,
+        result_limit=result_limit,
         bias_report=json.dumps(bias_report, indent=2) if bias_report else None
     )

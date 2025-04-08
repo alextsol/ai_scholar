@@ -2,7 +2,7 @@ import requests
 from config import SEMANTIC_SCHOLAR_API_URL
 from utils import format_items
 
-def search(query, limit=10, min_year=None, max_year=None):
+def search(query, limit, min_year=None, max_year=None):
     params = {
         "query": query,
         "limit": limit,

@@ -2,7 +2,7 @@ from config import CROSSREF_API_URL
 from utils import generic_requests_search
 
 
-def search(query, limit=10, min_year=None, max_year=None):
+def search(query, limit, min_year=None, max_year=None):
     params = {"query": query, "rows": limit}
     
     filters = []

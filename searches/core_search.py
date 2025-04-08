@@ -1,8 +1,7 @@
-import requests
 from config import CORE_API_URL, CORE_API_KEY
 from utils import generic_requests_search
 
-def search(query, limit=10, min_year=None, max_year=None):
+def search(query, limit, min_year=None, max_year=None):
     params = {"q": query, "limit": limit}
     headers = {"Authorization": f"Bearer {CORE_API_KEY}"}
     

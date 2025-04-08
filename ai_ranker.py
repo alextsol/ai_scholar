@@ -9,13 +9,19 @@ from config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
 
 def ai_ranker(query, papers):
-    simplified_papers = [{"title": paper.get("title", "No title")} for paper in papers if isinstance(paper, dict)]
+    simplified_papers = [
+        {
+            "title": paper.get("title", "No title"),
+            "authors": paper.get("authors", "No authors")
+        }
+        for paper in papers if isinstance(paper, dict)
+    ]
     papers_json = json.dumps(simplified_papers, indent=2)
     
     prompt = (
-        f"Based on the query '{query}', review the following list of paper titles and select the top 10 most relevant papers. "
+        f"Based on the query '{query}', review the following list of paper titles and authors, and select the top 10 most relevant papers. "
         "For each selected paper, provide a brief explanation of its relevance. "
-        "Return your answer as a JSON array of objects with the keys 'title' and 'explanation'.\n\n"
+        "Return your answer as a JSON array of objects with the keys 'title', 'authors', and 'explanation'.\n\n"
         f"Papers:\n{papers_json}"
     )
     

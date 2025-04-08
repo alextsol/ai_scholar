@@ -8,7 +8,7 @@ from utils import generic_requests_search, format_items
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-def aggregate_and_rank_papers(query, limit=10):
+def aggregate_and_rank_papers(query, limit):
     aggregated_papers = []
     logger.debug(f"Starting aggregation for query: '{query}'")
     

@@ -17,7 +17,7 @@ BACKENDS = {
     wait=wait_fixed(5),           
     retry=retry_if_exception_type(Exception)  
 )
-def search_papers(query, limit=10, backend=None, min_year=None, max_year=None):
+def search_papers(query, limit, backend=None, min_year=None, max_year=None):
     if backend is None:
         backend = DEFAULT_SEARCH_BACKEND
     if backend not in BACKENDS:
