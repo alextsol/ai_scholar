@@ -3,12 +3,12 @@ import logging
 
 from ai_ranker import ai_ranker
 from paper_search import BACKENDS
-from utils import generic_requests_search, format_items
+from utils import  filter_results_by_year, generic_requests_search, format_items
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-def aggregate_and_rank_papers(query, limit):
+def aggregate_and_rank_papers(query, limit, ai_result_limit, min_year, max_year):
     aggregated_papers = []
     logger.debug(f"Starting aggregation for query: '{query}'")
     
@@ -54,16 +54,19 @@ def aggregate_and_rank_papers(query, limit):
     
     logger.debug(f"Aggregated papers before ranking: {aggregated_papers}")
     
+    if min_year is not None or max_year is not None:
+        aggregated_papers = filter_results_by_year(aggregated_papers, min_year, max_year)
+    
     unique_papers = remove_duplicates(aggregated_papers)
     logger.debug(f"{len(unique_papers)} papers after duplicate removal.")
     
-    ranked_papers = ai_ranker(query, unique_papers)
+    ranked_papers = ai_ranker(query, unique_papers, ai_result_limit)
     logger.debug(f"{len(ranked_papers)} papers returned by AI ranker.")
     
     merged = merge_ranked_with_details(ranked_papers, aggregated_papers)
     logger.debug(f"{len(merged)} papers after merging ranked and aggregated details.")
     
-    return merged[:10]
+    return merged[:ai_result_limit]
 
 def remove_duplicates(papers):
     seen = set()
