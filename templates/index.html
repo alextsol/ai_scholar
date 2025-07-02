@@ -65,8 +65,15 @@
             </div>
             <div class="form-check">
               <input class="form-check-input" type="radio" name="mode" id="modeAggregate" value="aggregate">
-              <label class="form-check-label" for="modeAggregate">Aggregate & Rank Results</label>
+              <label class="form-check-label" for="modeAggregate">Aggregate Search</label>
             </div>
+          </div>
+          <div class="mb-3" id="rankingModeGroup" {% if mode != 'aggregate' %}style="display:none"{% endif %}>
+            <label for="rankingMode" class="form-label">Ranking Mode:</label>
+            <select name="ranking_mode" id="rankingMode" class="form-select">
+              <option value="ai" {% if ranking_mode == 'ai' %}selected{% endif %}>AI Ranked</option>
+              <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited</option>
+            </select>
           </div>
           <div class="mb-3">
             <label for="yearRange" class="form-label">Year Range:</label>
@@ -123,6 +130,7 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   <script src="{{ url_for('static', filename='js/scrollToTop.js') }}"></script>
   <script src="{{ url_for('static', filename='js/results_toggle.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ranking_mode.js') }}"></script>
 
   {% if chatbot_response and query %}
   <script>

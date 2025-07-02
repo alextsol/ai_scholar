@@ -8,9 +8,9 @@ from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_t
 from utils import filter_results_by_year
 
 BACKENDS = {
-    "semantic_scholar": semantic_search,
+    #"semantic_scholar": semantic_search,
     "arxiv": arxiv_search,
-    "crossref": crossref_search,
+    #"crossref": crossref_search,
     #"core": core_search,
 }
 

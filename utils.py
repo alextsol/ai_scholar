@@ -19,9 +19,10 @@ def filter_results_by_year(papers, min_year=None, max_year=None):
     filtered_papers = []
     for paper in papers:
         try:
-            year = int(paper.get('year', 0)) 
+            year_val = paper.get('year', 0)
+            year = int(year_val) if year_val is not None else 0
             if (min_year is None or year >= min_year) and (max_year is None or year <= max_year):
                 filtered_papers.append(paper)
-        except ValueError:
+        except (ValueError, TypeError):
             continue
     return filtered_papers

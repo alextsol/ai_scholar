@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from key1 import Key1, coreKey
+from key1 import Key1, OpenCit, coreKey
 
 load_dotenv()  
 
@@ -16,6 +16,7 @@ CORE_API_KEY = os.getenv("CORE_API_KEY", coreKey)
 
 OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", Key1)
+OPENCITATION_API_KEY = os.getenv("OPENCITATION_API_KEY", OpenCit)
 
 # GeoIP Database path
 GEOIP_DATABASE_PATH = os.getenv("GEOIP_DATABASE_PATH", "data/GeoLite2-City.mmdb")
