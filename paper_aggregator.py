@@ -85,9 +85,11 @@ def merge_ranked_with_details(ranked, aggregated):
     }
     merged = []
     for rank_item in ranked:
-        rank_title = rank_item.get("title", "").strip().lower()
+        # Handle both 'title'/'t' and 'authors'/'a' field names
+        rank_title = (rank_item.get("title") or rank_item.get("t", "")).strip().lower()
+        rank_authors = rank_item.get("authors") or rank_item.get("a", "")
         explanation = rank_item.get("explanation", "No explanation provided")
-        citation = rank_item.get("citations")
+        citation = rank_item.get("citations") or rank_item.get("c")
         
         matched_detail = None
         for key in details_by_title:
@@ -97,16 +99,33 @@ def merge_ranked_with_details(ranked, aggregated):
             
         if matched_detail:
             merged_item = matched_detail.copy()
-            merged_item["explanation"] = explanation
+            # Ensure explanation is always set
+            merged_item["explanation"] = explanation if explanation and explanation != "No explanation provided" else "AI ranking based on relevance to query"
             
-            if citation in (None, "Not available", 0) and "citations" in matched_detail and matched_detail["citations"]:
-                merged_item["citations"] = matched_detail.get("citations", citation)
-            elif citation not in (None, "Not available"):
+            # Handle citations - only include if available and valid
+            if citation and citation not in (None, "Not available", 0, "0"):
                 merged_item["citations"] = citation
+            elif "citation" in matched_detail and matched_detail["citation"] and matched_detail["citation"] not in ("Not available", 0, "0"):
+                merged_item["citations"] = matched_detail["citation"]
+            else:
+                # Remove citation field entirely if not available
+                merged_item.pop("citation", None)
+                merged_item.pop("citations", None)
             
             merged.append(merged_item)
         else:
-            merged.append(rank_item)
+            # If no match found, create new item with proper field names
+            new_item = {
+                "title": rank_title.title() if rank_title else "Unknown Title",
+                "authors": rank_authors if rank_authors else "Unknown Authors",
+                "explanation": explanation if explanation and explanation != "No explanation provided" else "AI ranking based on relevance to query"
+            }
+            
+            # Remove "Not available" citations and add if valid
+            if citation and citation not in (None, "Not available", 0, "0"):
+                new_item["citations"] = citation
+                
+            merged.append(new_item)
     return merged
 
 ##if __name__ == "__main__":

@@ -26,7 +26,7 @@ def index():
     max_year =""
     papers=[]
     result_limit = 100
-    ai_result_limit = 10
+    ai_result_limit = 100
     ranking_mode =""
     
     if request.method == 'POST':

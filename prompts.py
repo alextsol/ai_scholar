@@ -1,17 +1,31 @@
-def ai_ranking(query, ai_result_limit, papers_json):
+def ai_ranking_prompt(query, batch_size, papers_json, current_batch, total_batches, total_papers):
+    """Create AI ranking prompt with batch information"""
     return (
-        f"Based on the query '{query}', review the following list of paper titles and authors, and select the top {ai_result_limit} most relevant papers. "
-        "For each selected paper, provide a brief explanation of its relevance. "
-        "Return your answer as a JSON array of objects with the keys 'title', 'authors', and 'explanation'.\n\n"
-        f"Papers:\n{papers_json}"
+        f"You are processing batch {current_batch} of {total_batches} for the query: '{query}'\n"
+        f"Total papers across all batches: {total_papers}. This batch contains {batch_size} papers.\n\n"
+        f"IMPORTANT: Provide explanations for ALL {batch_size} papers in this batch, not just the top ones.\n"
+        f"For each paper, provide a detailed explanation (2-3 sentences) of why it's relevant to the query.\n\n"
+        f"Return a JSON array with ALL {batch_size} papers, each having:\n"
+        "- title: exact title from input (use 't' field value)\n"
+        "- authors: exact authors from input (use 'a' field value)\n"
+        "- explanation: detailed 2-3 sentence explanation of relevance\n\n"
+        f"Papers to analyze:\n{papers_json}\n\n"
+        f"Return ONLY a JSON array with ALL {batch_size} papers:"
     )
-    
-def citation_ranking(query, ai_result_limit, papers_json):
+
+def citation_ranking_prompt(query, batch_size, papers_json, current_batch, total_batches, total_papers):
+    """Create citation ranking prompt with batch information"""
     return (
-        f"Based on the query '{query}', review the following list of paper titles =t, authors =a, citations =c. "
-        "If any paper have citation:'Not availdable' Search for their citation count in the web and include them in the ranking."
-        f"Rank all papers by the number of citations in descending order and select the top {ai_result_limit} papers."
-        "For each selected paper, always include the citation count and provide a brief explanation of its relevance."
-        "Return your answer as a JSON array of objects with the keys 'title', 'authors', 'citations', and 'explanation'.\n\n"
-        f"Papers:\n{papers_json}"
+        f"You are processing batch {current_batch} of {total_batches} for the query: '{query}'\n"
+        f"Total papers across all batches: {total_papers}. This batch contains {batch_size} papers.\n\n"
+        f"IMPORTANT: Provide explanations for ALL {batch_size} papers in this batch.\n"
+        f"Consider both citation count ('c' field) and relevance to the query.\n"
+        f"For each paper, provide a detailed explanation (2-3 sentences) considering both citations and relevance.\n\n"
+        f"Return a JSON array with ALL {batch_size} papers, each having:\n"
+        "- title: exact title from input (use 't' field value)\n"
+        "- authors: exact authors from input (use 'a' field value)\n"
+        "- citations: citation count from input (use 'c' field value)\n"
+        "- explanation: detailed explanation of citation impact and relevance\n\n"
+        f"Papers to analyze:\n{papers_json}\n\n"
+        f"Return ONLY a JSON array with ALL {batch_size} papers:"
     )

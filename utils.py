@@ -26,3 +26,21 @@ def filter_results_by_year(papers, min_year=None, max_year=None):
         except (ValueError, TypeError):
             continue
     return filtered_papers
+
+def _safe_int_conversion(value):
+    """Safely convert citation values to integers"""
+    if value is None:
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        if value.lower() in ['not available', 'n/a', '', 'none']:
+            return 0
+        try:
+            return int(value)
+        except ValueError:
+            return 0
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0
