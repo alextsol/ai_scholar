@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request
 import json
-from paper_search import search_papers
-from paper_aggregator import aggregate_and_rank_papers
-from fairness import compute_fairness_metrics
-from analytics import log_search
+from .paper_search import search_papers
+from .paper_aggregator import aggregate_and_rank_papers
+from .fairness import compute_fairness_metrics
+from .analytics import log_search
 
 bp = Blueprint('main', __name__)
 
@@ -21,13 +21,13 @@ def index():
     chatbot_response = ""
     query = ""
     selected_backend = ""
-    mode =""
-    min_year =""
-    max_year =""
-    papers=[]
+    mode = ""
+    min_year = ""
+    max_year = ""
+    papers = []
     result_limit = 100
     ai_result_limit = 100
-    ranking_mode =""
+    ranking_mode = ""
     
     if request.method == 'POST':
         query = request.form['query']
@@ -41,31 +41,17 @@ def index():
         ai_result_limit = request.form.get('ai_result_limit', '10')
         ranking_mode = request.form.get('ranking_mode', 'ai')
         
-        try:
-            min_year = int(min_year) if min_year else None
-        except ValueError:
-            min_year = None
-        try:
-            max_year = int(max_year) if max_year else None
-        except ValueError:
-            max_year = None
-            
-        try:
-            result_limit = int(result_limit)
-        except ValueError:
-            result_limit = 100
-            
-        try:
-            ai_result_limit = int(ai_result_limit)
-        except ValueError:
-            ai_result_limit = 10
+        min_year = int(min_year) if min_year and min_year.isdigit() else None
+        max_year = int(max_year) if max_year and max_year.isdigit() else None
+        result_limit = int(result_limit) if result_limit.isdigit() else 100
+        ai_result_limit = int(ai_result_limit) if ai_result_limit.isdigit() else 10
 
         log_search(query, ip_address)
 
         if mode == "aggregate":
-            papers = aggregate_and_rank_papers(query,result_limit,ai_result_limit,ranking_mode,min_year=min_year, max_year=max_year)
+            papers = aggregate_and_rank_papers(query, result_limit, ai_result_limit, ranking_mode, min_year, max_year)
         else:
-            papers = search_papers(query,result_limit, backend=selected_backend, min_year=min_year, max_year=max_year)
+            papers = search_papers(query, result_limit, backend=selected_backend, min_year=min_year, max_year=max_year)
         
         bias_report = compute_fairness_metrics(papers)
         
@@ -90,7 +76,7 @@ def index():
     return render_template(
         'index.html',
         query=query,
-        papersCount = len(papers),
+        papersCount=len(papers),
         chatbot_response=chatbot_response,
         selected_backend=selected_backend,
         mode=mode,

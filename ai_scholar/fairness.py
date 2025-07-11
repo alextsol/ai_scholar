@@ -6,12 +6,8 @@ def compute_fairness_metrics(papers):
     if not valid_papers:
         return {}
     
-    # Assign a dummy score of 1.0 for each paper (or replace with a real quality metric)
     scores = [paper.get("score", 1.0) for paper in valid_papers]
-    # Use the 'source' as the sensitive feature, defaulting to "unknown"
     groups = [paper.get("source", "unknown") for paper in valid_papers]
-    
-    # Create dummy true labels since we don't have actual ones
     dummy_labels = np.zeros(len(scores))
     
     mf = MetricFrame(
@@ -21,5 +17,4 @@ def compute_fairness_metrics(papers):
         sensitive_features=groups
     )
     
-    # Convert the resulting Series to a dictionary to avoid ambiguity in truth value.
     return mf.by_group.to_dict()

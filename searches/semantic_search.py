@@ -1,6 +1,6 @@
 import requests
-from config import SEMANTIC_SCHOLAR_API_URL
-from utils import format_items
+from ai_scholar.config import SEMANTIC_SCHOLAR_API_URL
+from utils.utils import format_items
 
 def search(query, limit, min_year=None, max_year=None):
     params = {
@@ -11,6 +11,7 @@ def search(query, limit, min_year=None, max_year=None):
     response = requests.get(SEMANTIC_SCHOLAR_API_URL, params=params)
     if response.status_code != 200:
         return f"Error: Unable to fetch papers (Status Code: {response.status_code})"
+    
     json_response = response.json()
     data = json_response.get('data', [])
     if not isinstance(data, list):

@@ -1,5 +1,5 @@
-from config import CROSSREF_API_URL
-from utils import generic_requests_search
+from ai_scholar.config import CROSSREF_API_URL
+from utils.utils import generic_requests_search
 
 
 def search(query, limit, min_year=None, max_year=None):

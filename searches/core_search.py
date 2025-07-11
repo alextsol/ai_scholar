@@ -1,5 +1,5 @@
-from config import CORE_API_URL, CORE_API_KEY
-from utils import generic_requests_search
+from ai_scholar.config import CORE_API_URL, CORE_API_KEY
+from utils.utils import generic_requests_search
 
 def search(query, limit, min_year=None, max_year=None):
     params = {"q": query, "limit": limit}

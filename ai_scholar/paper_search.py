@@ -2,10 +2,10 @@ from searches.semantic_search import search as semantic_search
 from searches.arxiv_search import search as arxiv_search
 from searches.crossref_search import search as crossref_search
 from searches.core_search import search as core_search
-from config import DEFAULT_SEARCH_BACKEND
+from .config import DEFAULT_SEARCH_BACKEND
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
-from utils import filter_results_by_year
+from utils.utils import filter_results_by_year
 
 BACKENDS = {
     #"semantic_scholar": semantic_search,

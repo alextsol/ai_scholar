@@ -1,6 +1,6 @@
 import arxiv
 
-from utils import format_items
+from utils.utils import format_items
 
 def search(query, limit):
     search_obj = arxiv.Search(query=query, max_results=limit, sort_by=arxiv.SortCriterion.Relevance)

@@ -1,5 +1,5 @@
 from flask import Flask
-from endpoints import bp as main_bp
+from ai_scholar.endpoints import bp as main_bp
 
 app = Flask(__name__)
 app.secret_key = "SECRET_KEY"  
