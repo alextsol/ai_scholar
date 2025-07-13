@@ -71,6 +71,13 @@ function getSearchHistory() {
     const resultsContent = document.getElementById("resultsContent");
     if (resultsContent) {
       resultsContent.innerHTML = entry.resultsHTML;
+      
+      // Reinitialize the results sorter for the displayed history
+      setTimeout(() => {
+        if (window.resultsSorter) {
+          window.resultsSorter.refresh();
+        }
+      }, 100);
     }
     const queryDisplay = document.getElementById("queryDisplay");
     if (queryDisplay) {

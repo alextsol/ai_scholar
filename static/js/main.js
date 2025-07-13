@@ -24,5 +24,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (window.currentQuery && window.currentResultsHTML && typeof SearchHistory !== "undefined") {
     SearchHistory.addSearchHistory(currentQuery, currentResultsHTML, currentSource);
+    
+    // Initialize the results sorter if it exists and results are present
+    setTimeout(() => {
+      if (window.resultsSorter && document.getElementById('resultsContent')) {
+        window.resultsSorter.refresh();
+      }
+    }, 100);
   }
 });
