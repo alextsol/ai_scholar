@@ -4,7 +4,6 @@ import json
 from .paper_search import search_papers
 from .paper_aggregator import aggregate_and_rank_papers
 from .fairness import compute_fairness_metrics
-from .analytics import log_search
 from .models import db, SearchHistory
 
 bp = Blueprint('main', __name__)
@@ -55,8 +54,6 @@ def index():
         result_limit = int(result_limit) if result_limit.isdigit() else 100
         ai_result_limit = int(ai_result_limit) if ai_result_limit.isdigit() else 10
 
-        log_search(query, ip_address)
-        
         search_record = SearchHistory(
             user_id=current_user.id,
             query=query,

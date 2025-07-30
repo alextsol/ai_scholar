@@ -16,7 +16,6 @@
 - All utils/ folder contents
 - All static/ folder contents
 - All templates/ folder contents
-- data/GeoLite2-City.mmdb file
 
 ## Environment Setup
 Create .env file in project root with:
