@@ -3,7 +3,6 @@ from flask_login import login_required, current_user
 import json
 from .paper_search import search_papers
 from .paper_aggregator import aggregate_and_rank_papers
-from .fairness import compute_fairness_metrics
 from .models import db, SearchHistory
 
 bp = Blueprint('main', __name__)
@@ -24,8 +23,6 @@ def group_results_by_source(papers, default_source="Unknown"):
 def index():
     if not current_user.is_authenticated:
         return redirect(url_for('main.landing'))
-    bias_report = None
-    chatbot_response = ""
     query = ""
     selected_backend = ""
     mode = ""
@@ -65,8 +62,6 @@ def index():
             papers = aggregate_and_rank_papers(query, result_limit, ai_result_limit, ranking_mode, min_year, max_year)
         else:
             papers = search_papers(query, result_limit, backend=selected_backend, min_year=min_year, max_year=max_year)
-        
-        bias_report = compute_fairness_metrics(papers)
         
         search_record.results_count = len(papers) if papers else 0
         try:
@@ -115,6 +110,5 @@ def index():
         max_year=max_year,
         result_limit=result_limit,
         ai_result_limit=ai_result_limit,
-        ranking_mode=ranking_mode,
-        bias_report=json.dumps(bias_report, indent=2) if bias_report else None
+        ranking_mode=ranking_mode
     )

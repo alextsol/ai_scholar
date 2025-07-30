@@ -10,7 +10,3 @@ CORE_API_URL = os.getenv("CORE_API_URL", "https://api.core.ac.uk/v3/search/works
 DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "semantic_scholar")
 
 CORE_API_KEY = os.getenv("CORE_API_KEY")
-
-OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENCITATION_API_KEY = os.getenv("OPENCITATION_API_KEY")
