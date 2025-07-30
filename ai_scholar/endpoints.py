@@ -1,11 +1,17 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for
+from flask_login import login_required, current_user
 import json
 from .paper_search import search_papers
 from .paper_aggregator import aggregate_and_rank_papers
 from .fairness import compute_fairness_metrics
 from .analytics import log_search
+from .models import db, SearchHistory
 
 bp = Blueprint('main', __name__)
+
+@bp.route('/landing')
+def landing():
+    return render_template('landing.html')
 
 def group_results_by_source(papers, default_source="Unknown"):
     groups = {}
@@ -17,6 +23,8 @@ def group_results_by_source(papers, default_source="Unknown"):
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    if not current_user.is_authenticated:
+        return redirect(url_for('main.landing'))
     bias_report = None
     chatbot_response = ""
     query = ""
@@ -48,6 +56,13 @@ def index():
         ai_result_limit = int(ai_result_limit) if ai_result_limit.isdigit() else 10
 
         log_search(query, ip_address)
+        
+        search_record = SearchHistory(
+            user_id=current_user.id,
+            query=query,
+            backend=selected_backend or mode,
+            results_count=0
+        )
 
         if mode == "aggregate":
             papers = aggregate_and_rank_papers(query, result_limit, ai_result_limit, ranking_mode, min_year, max_year)
@@ -55,6 +70,13 @@ def index():
             papers = search_papers(query, result_limit, backend=selected_backend, min_year=min_year, max_year=max_year)
         
         bias_report = compute_fairness_metrics(papers)
+        
+        search_record.results_count = len(papers) if papers else 0
+        try:
+            db.session.add(search_record)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
         
         if papers:
             grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
@@ -82,6 +104,8 @@ def index():
                     
                     source_results["papers"].append(paper_details)
                 results.append(source_results)
+        else:
+            results = []
     
     return render_template(
         'index.html',

@@ -15,6 +15,7 @@ BACKENDS = {
     "semantic_scholar": semantic_search,
     "arxiv": arxiv_search,
     "crossref": crossref_search,
+    #"core": core_search,
 }
 
 @retry(
@@ -38,7 +39,6 @@ def search_papers(query, limit, backend=None, min_year=None, max_year=None):
     
     if backend == "semantic_scholar":
         time.sleep(random.uniform(2, 5))
-        print(f"Searching Semantic Scholar for: {query}")
     
     try:
         response = BACKENDS[backend](query, limit, min_year, max_year)

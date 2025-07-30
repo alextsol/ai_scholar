@@ -1,4 +1,11 @@
 *.log
 *.pyc
 __pycache__/
-.*key1.py
+.env
+.env.local
+.env.production
+*.db
+instance/
+venv/
+env/
+.venv/

@@ -1,6 +1,13 @@
 arxiv==1.4.5
 fairlearn==0.12.0
 Flask==2.2.5
+Flask-SQLAlchemy==3.0.5
+Flask-Login==0.6.3
+Flask-WTF==1.1.1
+WTForms==3.0.1
+email-validator==2.1.0
+pandas==2.1.4
+tabulate==0.9.0
 geoip2==5.0.0
 google-generativeai==0.8.3
 numpy==2.2.4

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scholar Search - Academic Paper Search Engine</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="#">Scholar Search</a>
+      <div class="navbar-nav ms-auto">
+        <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+        <a class="nav-link" href="{{ url_for('auth.register') }}">Register</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h1 class="display-4 mb-4">Welcome to Scholar Search</h1>
+        <p class="lead mb-5">
+          Discover academic papers from multiple sources including Semantic Scholar, arXiv, CrossRef, and CORE.
+          Get AI-powered rankings and comprehensive search results in one place.
+        </p>
+
+        <div class="row mb-5">
+          <div class="col-md-3 mb-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <img src="{{ url_for('static', filename='icons/semantic.png') }}" alt="Semantic Scholar" class="mb-3" style="width: 40px; height: 40px;">
+                <h6>Semantic Scholar</h6>
+                <p class="small text-muted">Research papers with citation data</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <img src="{{ url_for('static', filename='icons/arxiv.png') }}" alt="arXiv" class="mb-3" style="width: 40px; height: 40px;">
+                <h6>arXiv</h6>
+                <p class="small text-muted">Preprint repository for physics, mathematics, and more</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <img src="{{ url_for('static', filename='icons/cross.png') }}" alt="CrossRef" class="mb-3" style="width: 40px; height: 40px;">
+                <h6>CrossRef</h6>
+                <p class="small text-muted">Scholarly publishing industry metadata</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="card h-100">
+              <div class="card-body text-center">
+                <img src="{{ url_for('static', filename='icons/core.png') }}" alt="CORE" class="mb-3" style="width: 40px; height: 40px;">
+                <h6>CORE</h6>
+                <p class="small text-muted">Open access research papers</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-5">
+          <h3>Features</h3>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6>🔍 Multi-Source Search</h6>
+                  <p class="small">Search across multiple academic databases simultaneously</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6>🤖 AI-Powered Ranking</h6>
+                  <p class="small">Get intelligent paper rankings based on relevance</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6>📊 Search History</h6>
+                  <p class="small">Keep track of your research journey</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-block">
+          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Get Started</a>
+          <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-light mt-5 py-4">
+    <div class="container text-center">
+      <p class="text-muted">&copy; 2025 Scholar Search. Empowering academic research.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

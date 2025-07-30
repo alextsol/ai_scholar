@@ -1,12 +1,17 @@
 import json
 import re
 import time
+import os
 import google.generativeai as genai
-from key1 import glg
+from dotenv import load_dotenv
 from .prompts import ai_ranking_prompt, citation_ranking_prompt
 from utils.utils import _safe_int_conversion, extract_arxiv_ids, update_papers_with_citations
 
-genai.configure(api_key=glg)
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY environment variable is required")
+genai.configure(api_key=GOOGLE_API_KEY)
 
 def ai_ranker(query, papers, ranking_mode, ai_result_limit):
     papers = fetch_paper(papers)
