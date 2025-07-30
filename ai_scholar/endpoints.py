@@ -28,6 +28,7 @@ def index():
     result_limit = 100
     ai_result_limit = 100
     ranking_mode = ""
+    results = []
     
     if request.method == 'POST':
         query = request.form['query']
@@ -57,27 +58,36 @@ def index():
         
         if papers:
             grouped_results = group_results_by_source(papers, default_source=selected_backend or "Unknown")
-            chatbot_response = ""
+            results = []
             for src, group in grouped_results.items():
-                chatbot_response += f"<h4>{src} results:</h4><ul>"
+                source_results = {"source": src, "papers": []}
                 for paper in group:
-                    chatbot_response += (
-                        f"<li><strong>{paper.get('title', 'No title')}</strong> "
-                        f"({paper.get('year', 'Unknown year')})<br>"
-                        f"<strong>Authors</strong>: {paper.get('authors', 'No authors')}<br>"
-                        f"<strong>Citations</strong>: {paper.get('citation', 'N/A')}<br>"
-                        f"<a href='{paper.get('url', '#')}' target='_blank'>Read More</a></li></br>"
-                    )
+                    citation_count = paper.get('citations')
+                    if citation_count is None:
+                        citation_count = paper.get('citation')
+                    
+                    if citation_count is None:
+                        citation_count = 'N/A'
+                    
+                    paper_details = {
+                        'title': paper.get('title', 'No title'),
+                        'year': paper.get('year', 'Unknown year'),
+                        'authors': paper.get('authors', 'No authors'),
+                        'citations': citation_count,
+                        'url': paper.get('url', '#')
+                    }
+                    
                     if mode == "aggregate" and paper.get('explanation'):
-                        chatbot_response += f"<em>{paper['explanation']}</em><br>"
-                    chatbot_response += "</li><br>"
-                chatbot_response += "</ul>"
+                        paper_details['explanation'] = paper.get('explanation')
+                    
+                    source_results["papers"].append(paper_details)
+                results.append(source_results)
     
     return render_template(
         'index.html',
         query=query,
         papersCount=len(papers),
-        chatbot_response=chatbot_response,
+        results=results,
         selected_backend=selected_backend,
         mode=mode,
         min_year=min_year,

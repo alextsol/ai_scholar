@@ -1,4 +1,3 @@
-// darkmode.js
 function initDarkModeToggle(toggleId) {
     const toggle = document.getElementById(toggleId);
     const body = document.body;

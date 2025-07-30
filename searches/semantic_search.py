@@ -1,4 +1,6 @@
 import requests
+import time
+import random
 from ai_scholar.config import SEMANTIC_SCHOLAR_API_URL
 from utils.utils import format_items
 
@@ -8,9 +10,19 @@ def search(query, limit, min_year=None, max_year=None):
         "limit": limit,
         "fields": "title,abstract,authors,year,url,citationCount"
     }
-    response = requests.get(SEMANTIC_SCHOLAR_API_URL, params=params)
-    if response.status_code != 200:
-        return f"Error: Unable to fetch papers (Status Code: {response.status_code})"
+    
+    time.sleep(random.uniform(3, 6))
+    
+    try:
+        response = requests.get(SEMANTIC_SCHOLAR_API_URL, params=params, timeout=30)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 429:
+            return f"Error: Rate limit exceeded for Semantic Scholar API. Please try again later."
+        else:
+            return f"Error: HTTP {e.response.status_code} - {e.response.text}"
+    except requests.exceptions.RequestException as e:
+        return f"Error: Unable to connect to Semantic Scholar API - {str(e)}"
     
     json_response = response.json()
     data = json_response.get('data', [])

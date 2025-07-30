@@ -29,12 +29,10 @@
 
   <div class="container-fluid my-5" id="app">
     <div class="row">
-      <!-- Side Panel: Search History Tabs with Clear Button at the Top -->
       <div class="col-md-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0">Previous Searches</h5>
-          <button id="clearHistoryButton" class="btn btn-secondary btn-sm"
-            onclick="SearchHistory.clearSearchHistory()">Clear</button>
+          <button id="clearHistoryButton" class="btn btn-secondary btn-sm">Clear</button>
         </div>
         <ul id="searchHistoryTabs" class="list-group">
         </ul>
@@ -97,8 +95,7 @@
           </div>
         </form>
 
-        {% if chatbot_response %}
-        {% if chatbot_response|length > 0 %}
+        {% if results %}
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
@@ -118,10 +115,26 @@
             </div>
           </div>
           <div class="card-body">
-            <div id="resultsContent" class="card-text">{{ chatbot_response|safe }}</div>
+            <div id="resultsContent" class="card-text">
+              {% for source_result in results %}
+                <h4>{{ source_result.source }} results:</h4>
+                <ul>
+                  {% for paper in source_result.papers %}
+                    <li>
+                      <strong>{{ paper.title }}</strong> ({{ paper.year }})<br>
+                      <strong>Authors</strong>: {{ paper.authors }}<br>
+                      <strong>Citations</strong>: {{ paper.citations }}<br>
+                      <a href='{{ paper.url }}' target='_blank'>Read More</a>
+                      {% if paper.explanation %}
+                        <br><em>{{ paper.explanation }}</em>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endfor %}
+            </div>
           </div>
         </div>
-        {% endif %}
         {% elif query %}
         <div class="alert alert-warning text-center" role="alert">
           No results found for your search query: <strong>{{ query }}</strong>.
@@ -146,11 +159,19 @@
   <script src="{{ url_for('static', filename='js/ranking_mode.js') }}"></script>
   <script src="{{ url_for('static', filename='js/results_sorting.js') }}"></script>
 
-  {% if chatbot_response and query %}
+  {% if results and query %}
   <script>
-    window.currentQuery = "{{ query }}";
-    window.currentResultsHTML = "{{ chatbot_response|tojson|safe }}";
-    window.currentSource = "{{ 'aggregate' if mode == 'aggregate' else selected_backend }}";
+    document.addEventListener("DOMContentLoaded", function() {
+      setTimeout(function() {
+        window.currentQuery = "{{ query }}";
+        window.currentResultsHTML = document.getElementById('resultsContent').innerHTML;
+        window.currentSource = "{{ 'aggregate' if mode == 'aggregate' else selected_backend }}";
+        
+        if (window.addSearchHistory && window.currentQuery && window.currentResultsHTML) {
+          window.addSearchHistory(window.currentQuery, window.currentResultsHTML, window.currentSource);
+        }
+      }, 100);
+    });
   </script>
   {% endif %}
 </body>
