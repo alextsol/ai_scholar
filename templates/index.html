@@ -16,6 +16,7 @@
       <div class="navbar-nav ms-auto">
         {% if current_user.is_authenticated %}
           <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
+          <a class="nav-link" href="{{ url_for('main.history') }}">History</a>
           <a class="nav-link" href="{{ url_for('auth.profile') }}">Profile</a>
           <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
         {% else %}
@@ -56,6 +57,37 @@
           <button id="clearHistoryButton" class="btn btn-secondary btn-sm">Clear</button>
         </div>
         <ul id="searchHistoryTabs" class="list-group">
+          {% if recent_searches %}
+            {% for search in recent_searches %}
+              <li class="list-group-item d-flex justify-content-between align-items-center" 
+                  data-query="{{ search.query }}" 
+                  data-backend="{{ search.backend }}" 
+                  data-mode="{{ search.mode }}"
+                  data-search-id="{{ search.id }}">
+                <div class="flex-grow-1" style="cursor: pointer;">
+                  <strong>{{ search.query }}</strong>
+                  <br>
+                  <small class="text-muted">
+                    {{ search.backend }} • {{ search.created_at.strftime('%m/%d %H:%M') }}
+                    {% if search.results_count %}• {{ search.results_count }} results{% endif %}
+                  </small>
+                </div>
+                <div class="d-flex align-items-center">
+                  <span class="badge bg-primary rounded-pill me-2">{{ search.mode }}</span>
+                  <button class="btn btn-outline-danger btn-sm delete-search-btn" 
+                          data-search-id="{{ search.id }}" 
+                          data-query="{{ search.query }}"
+                          title="Delete this search">
+                    ×
+                  </button>
+                </div>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="list-group-item text-muted text-center">
+              <em>No previous searches</em>
+            </li>
+          {% endif %}
         </ul>
       </div>
 
@@ -116,12 +148,12 @@
           </div>
         </form>
 
-        {% if results %}
-        <div class="card">
+        <!-- Results section - always present -->
+        <div class="card" id="resultsSection" {% if not results %}style="display: none;"{% endif %}>
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              Search Results for <strong id="queryDisplay">{{ query }}</strong>
-              <span class="badge bg-secondary ms-2">{{ papersCount }} papers found</span>
+              Search Results for <strong id="queryDisplay">{{ query if query else "Previous Search" }}</strong>
+              <span class="badge bg-secondary ms-2" id="resultsCount">{{ papersCount if papersCount else 0 }} papers found</span>
             </div>
             <div class="d-flex align-items-center gap-2" id="sortControls">
               <label for="sortBy" class="form-label mb-0 text-white">Sort by:</label>
@@ -137,26 +169,31 @@
           </div>
           <div class="card-body">
             <div id="resultsContent" class="card-text">
-              {% for source_result in results %}
-                <h4>{{ source_result.source }} results:</h4>
-                <ul>
-                  {% for paper in source_result.papers %}
-                    <li>
-                      <strong>{{ paper.title }}</strong> ({{ paper.year }})<br>
-                      <strong>Authors</strong>: {{ paper.authors }}<br>
-                      <strong>Citations</strong>: {{ paper.citations }}<br>
-                      <a href='{{ paper.url }}' target='_blank'>Read More</a>
-                      {% if paper.explanation %}
-                        <br><em>{{ paper.explanation }}</em>
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              {% endfor %}
+              {% if results %}
+                {% for source_result in results %}
+                  <h4>{{ source_result.source }} results:</h4>
+                  <ul>
+                    {% for paper in source_result.papers %}
+                      <li>
+                        <strong>{{ paper.title }}</strong> ({{ paper.year }})<br>
+                        <strong>Authors</strong>: {{ paper.authors }}<br>
+                        <strong>Citations</strong>: {{ paper.citations }}<br>
+                        <a href='{{ paper.url }}' target='_blank'>Read More</a>
+                        {% if paper.explanation %}
+                          <br><em>{{ paper.explanation }}</em>
+                        {% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endfor %}
+              {% else %}
+                <p class="text-muted">No results to display. Click on a previous search or perform a new search.</p>
+              {% endif %}
             </div>
           </div>
         </div>
-        {% elif query %}
+        
+        {% if query and not results %}
         <div class="alert alert-warning text-center" role="alert">
           No results found for your search query: <strong>{{ query }}</strong>.
         </div>
