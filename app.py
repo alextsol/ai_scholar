@@ -1,6 +1,7 @@
 from flask import Flask
 from ai_scholar.endpoints import bp as main_bp
-from ai_scholar.auth import auth_bp
+from ai_scholar.endpoints.auth import auth_bp
+from ai_scholar.endpoints.history import history_bp
 from ai_scholar.models import db, User
 from flask_login import LoginManager
 from config import config
@@ -29,6 +30,7 @@ def create_app(config_name=None):
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(history_bp)
 
     with app.app_context():
         db.create_all()

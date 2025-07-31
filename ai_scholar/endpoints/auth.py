@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from .models import db, User, SearchHistory
-from .forms import LoginForm, RegistrationForm
+from ..models import db, User, SearchHistory
+from ..forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -17,17 +17,12 @@ def login():
         if user and user.check_password(form.password.data):
             is_first_login = user.last_login is None
             
-            # Debug: Print user info
-            print(f"🔐 User {user.username} (ID: {user.id}) logging in")
-            print(f"📚 Current search count: {len(user.get_recent_searches())}")
-            
             login_user(user)
             user.update_last_login()
             
             if is_first_login:
                 user.clear_search_history()
                 flash('Welcome! Your search history has been cleared for this session.', 'info')
-                print(f"🧹 Cleared history for first-time user {user.username}")
             
             flash('Logged in successfully!', 'success')
             next_page = request.args.get('next')
@@ -64,7 +59,6 @@ def register():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    print(f"🚪 User {current_user.username} (ID: {current_user.id}) logging out")
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))

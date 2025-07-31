@@ -16,7 +16,7 @@
       <div class="navbar-nav ms-auto">
         {% if current_user.is_authenticated %}
           <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
-          <a class="nav-link" href="{{ url_for('main.history') }}">History</a>
+          <a class="nav-link" href="{{ url_for('history.history') }}">History</a>
           <a class="nav-link" href="{{ url_for('auth.profile') }}">Profile</a>
           <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
         {% else %}

@@ -13,7 +13,6 @@ class SemanticScholarAPI:
         self.headers = {'Content-Type': 'application/json'}
     
     def fetch_papers_batch(self, arxiv_ids):
-        """Fetch a batch of papers from Semantic Scholar API"""
         payload = {"ids": [f"ARXIV:{arxiv_id}" for arxiv_id in arxiv_ids]}
         
         try:

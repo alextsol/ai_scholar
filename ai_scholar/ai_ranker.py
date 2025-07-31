@@ -5,7 +5,7 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 from .prompts import ai_ranking_prompt, citation_ranking_prompt
-from utils.utils import _safe_int_conversion, extract_arxiv_ids, update_papers_with_citations
+from utils.utils import _safe_int_conversion, extract_arxiv_ids, generate_fallback_explanation, update_papers_with_citations
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -57,8 +57,8 @@ def ai_ranker(query, papers, ranking_mode, ai_result_limit):
             response = model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=3072,
+                    temperature=0.3,
+                    max_output_tokens=4096,
                 )
             )
             
@@ -69,7 +69,7 @@ def ai_ranker(query, papers, ranking_mode, ai_result_limit):
             if not message_content.strip():
                 for paper in batch_papers:
                     paper_copy = paper.copy()
-                    paper_copy["explanation"] = generate_fallback_explanation(query)
+                    paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
                     all_ranked_papers.append(paper_copy)
                 continue
             
@@ -78,20 +78,22 @@ def ai_ranker(query, papers, ranking_mode, ai_result_limit):
                 
                 for paper in ranked_papers:
                     if not paper.get("explanation") or paper.get("explanation").strip() == "":
-                        paper["explanation"] = generate_fallback_explanation(query)
+                        title = paper.get("title") or paper.get("t", "")
+                        authors = paper.get("authors") or paper.get("a", "")
+                        paper["explanation"] = generate_fallback_explanation(query, title, authors)
                 
                 all_ranked_papers.extend(ranked_papers)
                 
             except (json.JSONDecodeError, ValueError, TypeError):
                 for paper in batch_papers:
                     paper_copy = paper.copy()
-                    paper_copy["explanation"] = generate_fallback_explanation(query)
+                    paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
                     all_ranked_papers.append(paper_copy)
                 
         except Exception:
             for paper in batch_papers:
                 paper_copy = paper.copy()
-                paper_copy["explanation"] = generate_fallback_explanation(query)
+                paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
                 all_ranked_papers.append(paper_copy)
         
         if batch_num + 1 < total_batches:
@@ -101,21 +103,11 @@ def ai_ranker(query, papers, ranking_mode, ai_result_limit):
         fallback_papers = []
         for paper in papers:
             paper_copy = paper.copy()
-            paper_copy["explanation"] = generate_fallback_explanation(query)
+            paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
             fallback_papers.append(paper_copy)
         return fallback_papers
     
     return all_ranked_papers
-
-def generate_fallback_explanation(query):
-    if "test" in query.lower():
-        return "This paper contributes to testing methodologies and quality assurance practices relevant to the research query."
-    elif any(word in query.lower() for word in ["machine learning", "ml", "ai", "artificial intelligence"]):
-        return "This research advances machine learning and AI methodologies with computational insights relevant to the query domain."
-    elif any(word in query.lower() for word in ["neural", "deep learning", "network"]):
-        return "This work contributes to neural network research and deep learning techniques relevant to the research area."
-    else:
-        return f"This paper provides valuable research insights relevant to '{query}' based on comprehensive content analysis."
 
 def fetch_paper(papers):
     return update_papers_with_citations(extract_arxiv_ids(papers))

@@ -15,7 +15,7 @@ BACKENDS = {
     "semantic_scholar": semantic_search,
     "arxiv": arxiv_search,
     "crossref": crossref_search,
-    #"core": core_search,
+    "core": core_search,
 }
 
 @retry(

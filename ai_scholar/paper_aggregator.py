@@ -75,7 +75,10 @@ def merge_ranked_with_details(ranked, aggregated):
             
         if matched_detail:
             merged_item = matched_detail.copy()
-            merged_item["explanation"] = explanation if explanation and explanation != "No explanation provided" else "AI ranking based on relevance to query"
+            if explanation and explanation.strip() and explanation not in ["No explanation provided", "AI ranking based on relevance to query"]:
+                merged_item["explanation"] = explanation
+            else:
+                merged_item["explanation"] = f"This paper is relevant to your query '{merged_item.get('title', 'research')}' based on content analysis and research methodology."
             
             if citation and citation not in (None, "Not available", 0, "0"):
                 merged_item["citations"] = citation
@@ -90,7 +93,7 @@ def merge_ranked_with_details(ranked, aggregated):
             new_item = {
                 "title": rank_title.title() if rank_title else "Unknown Title",
                 "authors": rank_authors if rank_authors else "Unknown Authors",
-                "explanation": explanation if explanation and explanation != "No explanation provided" else "AI ranking based on relevance to query"
+                "explanation": explanation if explanation and explanation.strip() and explanation not in ["No explanation provided", "AI ranking based on relevance to query"] else f"This research provides insights relevant to your '{rank_title or 'query'}' based on comprehensive analysis."
             }
             
             if citation and citation not in (None, "Not available", 0, "0"):
