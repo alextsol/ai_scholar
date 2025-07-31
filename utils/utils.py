@@ -12,7 +12,13 @@ def format_items(items, mapping):
 
 def generic_requests_search(url, params, mapping, headers=None, extractor=None):
     response = requests.get(url, params=params, headers=headers)
-    if response.status_code != 200:
+    if response.status_code == 429:
+        return "Error: Rate limit exceeded. Please try again later."
+    elif response.status_code == 401:
+        return "Error: Authentication failed. Please check your API key."
+    elif response.status_code == 403:
+        return "Error: Access forbidden. Your API key may not have the required permissions."
+    elif response.status_code != 200:
         return f"Error: Unable to fetch papers (Status Code: {response.status_code})"
     data = extractor(response) if extractor else response.json()
     return format_items(data, mapping)

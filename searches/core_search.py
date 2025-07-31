@@ -16,7 +16,7 @@ def search(query, limit, min_year=None, max_year=None):
     mapping = {
         'title': lambda item: item.get('title', 'No title'),
         'abstract': lambda item: item.get('abstract', 'No abstract available'),
-        'authors': lambda item: ', '.join(item.get('authors', [])),
+        'authors': lambda item: ', '.join([author.get('name', 'Unknown author') if isinstance(author, dict) else str(author) for author in item.get('authors', [])]),
         'year': lambda item: item.get('yearPublished', 'Unknown year'),
         'url': lambda item: item.get('downloadUrl', 'No URL available'),
         'citation': lambda item: item.get('citationCount', 'N/A'),
