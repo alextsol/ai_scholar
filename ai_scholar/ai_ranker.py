@@ -1,115 +1,102 @@
-import json
-import re
-import time
-import os
-import google.generativeai as genai
-from dotenv import load_dotenv
-from .prompts import ai_ranking_prompt, citation_ranking_prompt
-from utils.utils import _safe_int_conversion, extract_arxiv_ids, generate_fallback_explanation, update_papers_with_citations
+from .prompts import ai_ranking_prompt, citation_ranking_prompt, ai_description_prompt
+from .ai_models import ai_models
+from .config import SearchConfig
+from .ai_utils import create_paper_summary, create_description_summary, calculate_final_score, validate_explanation
+from utils.utils import _safe_int_conversion, extract_arxiv_ids, update_papers_with_citations
 
-load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY environment variable is required")
-genai.configure(api_key=GOOGLE_API_KEY)
+def process_ai_batch(prompt, batch_num, total_batches, batch_type="processing"):
+    try:
+        return ai_models.process_batch(prompt, batch_num, total_batches, batch_type)
+    except Exception:
+        return None
 
-def ai_ranker(query, papers, ranking_mode, ai_result_limit):
-    papers = fetch_paper(papers)
+def generate_ai_descriptions(query, papers_without_descriptions):
+    if not papers_without_descriptions:
+        return []
     
-    BATCH_SIZE = 30
-    all_ranked_papers = []
-    total_papers = len(papers)
-    total_batches = (total_papers + BATCH_SIZE - 1) // BATCH_SIZE
+    batch_size = ai_models.get_optimal_batch_size("description")
+    total_papers = min(len(papers_without_descriptions), SearchConfig.DEFAULT_LIMIT)
+    papers_to_process = papers_without_descriptions[:total_papers]
+    total_batches = (total_papers + batch_size - 1) // batch_size
+    
+    forbidden_starts = ["this paper", "the authors", "this work", "this research", "the paper", "this study"]
     
     for batch_num in range(total_batches):
-        start_idx = batch_num * BATCH_SIZE
-        end_idx = min(start_idx + BATCH_SIZE, total_papers)
-        batch_papers = papers[start_idx:end_idx]
+        start_idx = batch_num * batch_size
+        end_idx = min(start_idx + batch_size, total_papers)
+        batch_papers = papers_to_process[start_idx:end_idx]
         
-        simplified_papers = [
-            {
-                "t": paper.get("title", "No title"),
-                "a": paper.get("authors", "No authors")
-            }
-            for paper in batch_papers if isinstance(paper, dict)
-        ]
+        simplified_papers = [create_description_summary(paper) for paper in batch_papers]
         
-        if ranking_mode == "ai":
-            papers_json = json.dumps(simplified_papers, indent=2)
-            prompt = ai_ranking_prompt(query, len(simplified_papers), papers_json, batch_num + 1, total_batches, total_papers)
-        else:
-            simplified_papers = [
-                {
-                    "t": paper.get("title", "No title"),
-                    "a": paper.get("authors", "No authors"),
-                    "c": _safe_int_conversion(paper.get("citation", 0))
-                }
-                for paper in batch_papers if isinstance(paper, dict)
-            ]
-            
-            simplified_papers = sorted(simplified_papers, key=lambda x: x.get('c', 0), reverse=True)
-            papers_json = json.dumps(simplified_papers, indent=2)
-            prompt = citation_ranking_prompt(query, len(simplified_papers), papers_json, batch_num + 1, total_batches, total_papers)
+        prompt = ai_description_prompt(query, simplified_papers)
+        result = process_ai_batch(prompt, batch_num + 1, total_batches, "description")
         
-        try:
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=4096,
-                )
-            )
-            
-            message_content = response.text
-            message_content = re.sub(r"^```json\s*", "", message_content)
-            message_content = re.sub(r"\s*```$", "", message_content)
-            
-            if not message_content.strip():
-                for paper in batch_papers:
-                    paper_copy = paper.copy()
-                    paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
-                    all_ranked_papers.append(paper_copy)
-                continue
-            
-            try:
-                ranked_papers = json.loads(message_content)
-                
-                for paper in ranked_papers:
-                    if not paper.get("explanation") or paper.get("explanation").strip() == "":
-                        title = paper.get("title") or paper.get("t", "")
-                        authors = paper.get("authors") or paper.get("a", "")
-                        paper["explanation"] = generate_fallback_explanation(query, title, authors)
-                
-                all_ranked_papers.extend(ranked_papers)
-                
-            except (json.JSONDecodeError, ValueError, TypeError):
-                for paper in batch_papers:
-                    paper_copy = paper.copy()
-                    paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
-                    all_ranked_papers.append(paper_copy)
-                
-        except Exception:
-            for paper in batch_papers:
-                paper_copy = paper.copy()
-                paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
-                all_ranked_papers.append(paper_copy)
-        
-        if batch_num + 1 < total_batches:
-            time.sleep(1)
+        if result:
+            for i, description_data in enumerate(result):
+                if i < len(batch_papers):
+                    explanation = description_data.get("explanation", "").strip()
+                    if validate_explanation(explanation, forbidden_starts):
+                        batch_papers[i]["explanation"] = explanation
     
-    if not all_ranked_papers:
-        fallback_papers = []
-        for paper in papers:
-            paper_copy = paper.copy()
-            paper_copy["explanation"] = generate_fallback_explanation(query, paper.get("title", ""), paper.get("authors", ""))
-            fallback_papers.append(paper_copy)
-        return fallback_papers
+    return papers_to_process
+
+def ai_ranker(query, all_papers, ranking_mode="ai_ranking", ai_result_limit=50):
+    if not all_papers:
+        return []
+    
+    citation_weight = SearchConfig.CITATION_WEIGHT_CITATION if ranking_mode == "citation_ranking" else SearchConfig.CITATION_WEIGHT_AI
+    papers_to_process = all_papers[:ai_result_limit * 2] if len(all_papers) > ai_result_limit * 2 else all_papers
+    
+    batch_size = ai_models.get_optimal_batch_size("ranking")
+    all_ranked_papers = []
+    total_papers = len(papers_to_process)
+    total_batches = (total_papers + batch_size - 1) // batch_size
+    
+    for batch_num in range(total_batches):
+        start_idx = batch_num * batch_size
+        end_idx = min(start_idx + batch_size, total_papers)
+        batch_papers = papers_to_process[start_idx:end_idx]
+        
+        simplified_papers = [create_paper_summary(paper) for paper in batch_papers]
+        
+        prompt = ai_ranking_prompt(query, len(batch_papers), simplified_papers, batch_num + 1, total_batches, total_papers)
+        ai_result = process_ai_batch(prompt, batch_num + 1, total_batches, "ranking")
+        
+        if ai_result:
+            for i, rank_data in enumerate(ai_result):
+                if i < len(batch_papers):
+                    original_paper = batch_papers[i]
+                    ai_relevance = _safe_int_conversion(rank_data.get("relevance_score", 5))
+                    
+                    final_score = calculate_final_score(
+                        ai_relevance, 
+                        original_paper.get("citations", 0), 
+                        citation_weight
+                    )
+                    
+                    original_paper["ai_relevance_score"] = ai_relevance
+                    original_paper["final_relevance_score"] = final_score
+                    original_paper["explanation"] = rank_data.get("explanation", "").strip()
+                    
+                    all_ranked_papers.append(original_paper)
+        else:
+            for paper in batch_papers:
+                paper["ai_relevance_score"] = 5
+                paper["final_relevance_score"] = 5.0
+                paper["explanation"] = ""
+                all_ranked_papers.append(paper)
+    
+    all_ranked_papers.sort(key=lambda x: x.get("final_relevance_score", 0), reverse=True)
+    
+    papers_without_descriptions = [
+        paper for paper in all_ranked_papers
+        if not validate_explanation(paper.get("explanation", ""))
+    ]
+    
+    if papers_without_descriptions:
+        generate_ai_descriptions(query, papers_without_descriptions)
     
     return all_ranked_papers
 
 def fetch_paper(papers):
     return update_papers_with_citations(extract_arxiv_ids(papers))
-
-

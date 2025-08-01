@@ -1,6 +1,8 @@
-from ai_scholar.config import CROSSREF_API_URL
+import os
 from utils.utils import generic_requests_search
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def search(query, limit, min_year=None, max_year=None):
     params = {"query": query, "rows": limit}
@@ -26,4 +28,9 @@ def search(query, limit, min_year=None, max_year=None):
         'source': lambda item: "crossref"
     }
     extractor = lambda r: r.json()['message']['items']
-    return generic_requests_search(CROSSREF_API_URL, params, mapping, extractor=extractor)
+    return generic_requests_search(
+        os.getenv("CROSSREF_API_URL", "https://api.crossref.org/works"), 
+        params, 
+        mapping, 
+        extractor=extractor
+    )

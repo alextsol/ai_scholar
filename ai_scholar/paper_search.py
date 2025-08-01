@@ -2,12 +2,15 @@ from searches.semantic_search import search as semantic_search
 from searches.arxiv_search import search as arxiv_search
 from searches.crossref_search import search as crossref_search
 from searches.core_search import search as core_search
-from .config import DEFAULT_SEARCH_BACKEND
 from .cache import get_cache_key, get_cached_result, cache_result, cleanup_expired_cache
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import requests
 import time
 import random
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from utils.utils import filter_results_by_year
 
@@ -28,7 +31,7 @@ def search_papers(query, limit, backend=None, min_year=None, max_year=None):
     cleanup_expired_cache()
     
     if backend is None:
-        backend = DEFAULT_SEARCH_BACKEND
+        backend = os.getenv("DEFAULT_SEARCH_BACKEND", "semantic_scholar")
     if backend not in BACKENDS:
         return f"Error: Unknown backend '{backend}' specified."
     

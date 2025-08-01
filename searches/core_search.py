@@ -1,9 +1,12 @@
-from ai_scholar.config import CORE_API_URL, CORE_API_KEY
+import os
 from utils.utils import generic_requests_search
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def search(query, limit, min_year=None, max_year=None):
     params = {"q": query, "limit": limit}
-    headers = {"Authorization": f"Bearer {CORE_API_KEY}"}
+    headers = {"Authorization": f"Bearer {os.getenv('CORE_API_KEY')}"}
     
     filters = []
     if min_year:
@@ -25,4 +28,10 @@ def search(query, limit, min_year=None, max_year=None):
     
     extractor = lambda r: r.json().get('results', [])
     
-    return generic_requests_search(CORE_API_URL, params, mapping, headers=headers, extractor=extractor)
+    return generic_requests_search(
+        os.getenv("CORE_API_URL", "https://api.core.ac.uk/v3/search/works"), 
+        params, 
+        mapping, 
+        headers=headers, 
+        extractor=extractor
+    )

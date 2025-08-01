@@ -1,7 +1,11 @@
 import requests
 import time
 import random
-from ai_scholar.config import SEMANTIC_SCHOLAR_API_URL
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 from utils.utils import format_items
 
 def search(query, limit, min_year=None, max_year=None):
@@ -14,7 +18,11 @@ def search(query, limit, min_year=None, max_year=None):
     time.sleep(random.uniform(3, 6))
     
     try:
-        response = requests.get(SEMANTIC_SCHOLAR_API_URL, params=params, timeout=30)
+        response = requests.get(
+            os.getenv("SEMANTIC_SCHOLAR_API_URL", "https://api.semanticscholar.org/graph/v1/paper/search"), 
+            params=params, 
+            timeout=30
+        )
         response.raise_for_status()
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 429:
