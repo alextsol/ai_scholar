@@ -12,7 +12,7 @@
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-      <a class="navbar-brand" href="{{ url_for('main.index') }}">Scholar Search</a>
+      <a class="navbar-brand" href="{{ url_for('web_main.index') }}">Scholar Search</a>
       <div class="navbar-nav ms-auto">
         <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
         <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
@@ -68,7 +68,7 @@
                 </table>
               </div>
             {% else %}
-              <p class="text-muted">No search history yet. <a href="{{ url_for('main.index') }}">Start searching!</a></p>
+              <p class="text-muted">No search history yet. <a href="{{ url_for('web_main.index') }}">Start searching!</a></p>
             {% endif %}
           </div>
         </div>

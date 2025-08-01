@@ -22,15 +22,26 @@ class GeminiProvider(IAIProvider):
         self.client = genai.Client(api_key=self.api_key)
     
     def generate_content(self, prompt: str, operation_type: str = "general") -> Optional[str]:
-        """Generate content using Google Gemini"""
+        """Generate content using Google Gemini with optimized settings"""
         try:
+            # Adjust parameters based on operation type
+            if operation_type == "ranking":
+                # More deterministic for ranking consistency
+                temperature = 0.3
+                top_p = 0.9
+                max_tokens = min(4000, self.max_tokens)  # Ensure we have enough tokens for detailed ranking
+            else:
+                temperature = self.temperature
+                top_p = ProvidersConfig.AI.TOP_P
+                max_tokens = self.max_tokens
+            
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    temperature=self.temperature,
-                    max_output_tokens=self.max_tokens,
-                    top_p=ProvidersConfig.AI.TOP_P,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                    top_p=top_p,
                     top_k=ProvidersConfig.AI.TOP_K
                 )
             )
@@ -154,45 +165,96 @@ class GeminiProvider(IAIProvider):
         return {"error": "Unable to generate insights"}
     
     def _build_ranking_prompt(self, query: str, papers: List[Dict[str, Any]], limit: int) -> str:
-        """Build prompt for paper ranking"""
+        """Build enhanced prompt for intelligent paper ranking"""
         papers_text = ""
         for i, paper in enumerate(papers[:50]):  # Limit to avoid token overflow
+            abstract = (paper.get('abstract') or 'N/A')[:400] if paper.get('abstract') else 'N/A'
+            citations = paper.get('citations', 'N/A')
+            year = paper.get('year', 'N/A')
+            
             papers_text += f"""
 Paper {i+1}:
 Title: {paper.get('title', 'N/A')}
 Authors: {paper.get('authors', 'N/A')}
-Year: {paper.get('year', 'N/A')}
-Citations: {paper.get('citations', 'N/A')}
-Abstract: {paper.get('abstract', 'N/A')[:300]}...
+Year: {year}
+Citations: {citations}
+Source: {paper.get('source', 'N/A')}
+Abstract: {abstract}
 ---
 """
         
         return f"""
-You are an expert research assistant. Rank the following papers based on their relevance to the query: "{query}"
+You are an expert academic research assistant with deep knowledge across multiple scientific domains. Your task is to intelligently rank papers based on their relevance to the query: "{query}"
 
-Consider these factors:
-1. Direct relevance to the query
-2. Citation count and impact
-3. Recency and novelty
-4. Quality of research methodology
-5. Comprehensiveness of the work
+RANKING CRITERIA (in order of importance):
+1. SEMANTIC RELEVANCE (40%): How directly and comprehensively does the paper address the query topic?
+   - Look for exact keyword matches in title and abstract
+   - Consider conceptual relevance and related concepts
+   - Prefer papers that cover the core aspects of the query
 
+2. RESEARCH QUALITY (25%): Assess the rigor and methodology
+   - Clear research questions and hypotheses
+   - Appropriate methodology and experimental design
+   - Comprehensive literature review and citations
+   - Statistical significance and validation
+
+3. IMPACT AND CITATIONS (20%): Consider academic influence
+   - Citation count relative to publication year
+   - High citations indicate peer recognition
+   - Recent papers with growing citation trends
+
+4. RECENCY AND NOVELTY (10%): Balance current relevance
+   - Recent papers (2020+) for emerging topics
+   - Seminal older papers for established concepts
+   - Novel approaches or breakthrough findings
+
+5. COMPLETENESS (5%): Comprehensive coverage
+   - Detailed abstracts indicating thorough work
+   - Multiple aspects of the topic covered
+   - Practical applications or implications
+
+ANALYSIS INSTRUCTIONS:
+- Read each abstract carefully to understand the actual contribution
+- Consider the query context - what would be most useful for someone researching "{query}"?
+- Avoid bias toward any particular source or publication year
+- Look for papers that would provide the best learning path for the topic
+- Consider both theoretical foundations and practical applications
+
+PAPERS TO ANALYZE:
 {papers_text}
 
-Please return the top {limit} papers in order of relevance, with a brief explanation for each ranking.
-Format your response as a JSON array with this structure:
+REQUIRED OUTPUT:
+Return EXACTLY the top {limit} papers ranked by overall relevance score. For each paper, provide:
+1. A relevance score (1-100) based on the criteria above
+2. A detailed explanation of why this paper deserves its ranking
+3. Specific aspects that make it valuable for someone studying "{query}"
+
+Format your response as a valid JSON array:
 [
   {{
     "rank": 1,
-    "title": "Paper Title",
-    "explanation": "Brief explanation of why this paper ranks highly"
+    "title": "Exact title from the paper list",
+    "relevance_score": 95,
+    "explanation": "Detailed explanation covering: semantic relevance, research quality, impact, and why it's essential for understanding {query}. Mention specific aspects from the abstract that make it valuable."
   }},
-  ...
+  {{
+    "rank": 2,
+    "title": "Exact title from the paper list", 
+    "relevance_score": 88,
+    "explanation": "Detailed explanation..."
+  }}
+]
+
+IMPORTANT: 
+- Use the EXACT title as provided in the paper list
+- Rank papers by their actual contribution to understanding "{query}", not by publication prestige
+- Provide substantial explanations (50+ words) showing deep analysis
+- Ensure relevance scores reflect genuine quality differences
 ]
 """
     
     def _parse_ranking_response(self, response: str, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Parse AI ranking response and return ranked papers"""
+        """Parse AI ranking response and return ranked papers with enhanced scoring"""
         try:
             import json
             import re
@@ -203,27 +265,131 @@ Format your response as a JSON array with this structure:
                 ranking_data = json.loads(json_match.group())
                 
                 ranked_papers = []
+                found_titles = set()
+                
                 for rank_info in ranking_data[:limit]:
                     title = rank_info.get('title', '')
                     explanation = rank_info.get('explanation', '')
+                    relevance_score = rank_info.get('relevance_score', 0)
                     
-                    # Find matching paper
+                    # Find matching paper with improved matching
+                    best_match = None
+                    best_score = 0
+                    
                     for paper in papers:
-                        if self._titles_match(paper.get('title', ''), title):
-                            ranked_paper = paper.copy()
-                            ranked_paper['explanation'] = explanation
-                            ranked_papers.append(ranked_paper)
-                            break
+                        paper_title = paper.get('title', '')
+                        if paper_title in found_titles:
+                            continue
+                            
+                        match_score = self._calculate_title_similarity(paper_title, title)
+                        if match_score > best_score and match_score > 0.7:  # Threshold for matching
+                            best_match = paper
+                            best_score = match_score
+                    
+                    if best_match:
+                        ranked_paper = best_match.copy()
+                        ranked_paper['explanation'] = explanation
+                        ranked_paper['ai_relevance_score'] = relevance_score
+                        ranked_paper['ranking_confidence'] = best_score
+                        ranked_papers.append(ranked_paper)
+                        found_titles.add(best_match.get('title', ''))
                 
-                return ranked_papers
+                # If we found good matches, return them
+                if len(ranked_papers) >= min(3, limit):  # Need at least 3 good matches or all requested
+                    return ranked_papers
             
         except Exception as e:
-            pass
+            # Log the error for debugging
+            print(f"AI ranking parse error: {e}")
+        
+        # Enhanced fallback: rank by a combination of factors
+        return self._fallback_ranking(papers, limit)
+    
+    def _calculate_title_similarity(self, title1: str, title2: str) -> float:
+        """Calculate similarity score between two titles (0-1)"""
+        if not title1 or not title2:
+            return 0.0
+        
+        title1_clean = title1.lower().strip()
+        title2_clean = title2.lower().strip()
+        
+        # Exact match
+        if title1_clean == title2_clean:
+            return 1.0
+        
+        # Substring match
+        if title1_clean in title2_clean or title2_clean in title1_clean:
+            return 0.9
+        
+        # Word overlap scoring
+        words1 = set(title1_clean.split())
+        words2 = set(title2_clean.split())
+        
+        # Remove common words that don't add meaning
+        common_words = {'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        words1 = words1 - common_words
+        words2 = words2 - common_words
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
+        
+        return intersection / union if union > 0 else 0.0
+    
+    def _fallback_ranking(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+        """Intelligent fallback ranking when AI parsing fails"""
+        scored_papers = []
+        
+        for paper in papers:
+            score = 0
+            
+            # Citation score (0-40 points)
+            citations = paper.get('citations', 0)
+            if citations and citations != 'N/A':
+                try:
+                    cite_count = int(citations)
+                    score += min(40, cite_count / 10)  # Max 40 points, 1 point per 10 citations
+                except:
+                    pass
+            
+            # Recency score (0-30 points)
+            year = paper.get('year')
+            if year and year != 'N/A':
+                try:
+                    pub_year = int(year)
+                    current_year = 2024
+                    age = current_year - pub_year
+                    if age <= 5:
+                        score += 30 - (age * 5)  # Recent papers get more points
+                    elif age <= 10:
+                        score += 10
+                except:
+                    pass
+            
+            # Abstract quality score (0-20 points)
+            abstract = paper.get('abstract', '')
+            if abstract and abstract != 'N/A' and len(abstract) > 100:
+                score += 20
+            elif abstract and len(abstract) > 50:
+                score += 10
+            
+            # Title relevance (0-10 points) - basic keyword matching would go here
+            # For now, just add a small random component to break ties
+            import random
+            score += random.uniform(0, 5)
+            
+            scored_papers.append((score, paper))
+        
+        # Sort by score and return top papers
+        scored_papers.sort(key=lambda x: x[0], reverse=True)
         
         fallback_papers = []
-        for i, paper in enumerate(papers[:limit]):
+        for i, (score, paper) in enumerate(scored_papers[:limit]):
             paper_copy = paper.copy()
-            paper_copy['explanation'] = f"Ranked #{i+1} based on AI analysis"
+            paper_copy['explanation'] = f"Ranked #{i+1} by relevance score: {score:.1f} (based on citations, recency, and content quality)"
+            paper_copy['ai_relevance_score'] = int(score)
             fallback_papers.append(paper_copy)
         
         return fallback_papers
@@ -249,7 +415,7 @@ Paper {i+1}:
 - Authors: {paper.get('authors', 'N/A')}
 - Year: {paper.get('year', 'N/A')}
 - Citations: {paper.get('citations', 'N/A')}
-- Abstract: {paper.get('abstract', 'N/A')[:200]}...
+- Abstract: {(paper.get('abstract') or 'N/A')[:200]}...
 
 """
         return formatted

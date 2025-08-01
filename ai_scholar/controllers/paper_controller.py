@@ -54,10 +54,10 @@ class PaperController:
             return jsonify({
                 'success': True,
                 'results': aggregated_result.papers,
-                'total_count': aggregated_result.total_count,
-                'sources_used': aggregated_result.sources_used,
-                'ranking_applied': aggregated_result.ranking_applied,
-                'search_time': aggregated_result.search_time
+                'total_count': aggregated_result.total_found,
+                'sources_used': aggregated_result.backends_used,
+                'ranking_applied': aggregated_result.ranking_mode,
+                'search_time': aggregated_result.processing_time
             })
             
         except Exception as e:
@@ -159,7 +159,7 @@ class PaperController:
                 backend='aggregate',
                 mode='aggregate',
                 search_params=str(search_params),
-                results_count=result.total_count
+                results_count=result.total_found
             )
             
             db.session.add(search_record)

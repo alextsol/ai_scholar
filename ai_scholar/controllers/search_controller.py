@@ -29,24 +29,22 @@ class SearchController:
             
             search_request = SearchRequest(
                 query=data.get('query', ''),
-                backend=data.get('backend'),
+                backends=[data.get('backend')] if data.get('backend') else None,
                 limit=data.get('limit', 100),
                 min_year=data.get('min_year'),
                 max_year=data.get('max_year')
             )
             
-            if not search_request.validate():
-                return jsonify({'error': 'Invalid search parameters'}), 400
-            
+            # Validation is handled in __post_init__
             search_result = self.search_service.search_papers(search_request)
             self._save_search_history(search_request, search_result)
             
             return jsonify({
                 'success': True,
                 'results': search_result.papers,
-                'total_count': search_result.total_count,
-                'backend_used': search_result.backend_used,
-                'search_time': search_result.search_time
+                'total_count': search_result.total_found,
+                'backend_used': search_result.backends_used[0] if search_result.backends_used else 'unknown',
+                'search_time': search_result.processing_time
             })
             
         except Exception as e:
@@ -93,13 +91,16 @@ class SearchController:
     def _save_search_history(self, search_request: SearchRequest, search_result: SearchResult):
         """Save search to history"""
         try:
+            # Get the first backend from the list, or 'default'
+            backend = (search_request.backends[0] if search_request.backends else 'default')
+            
             search_record = SearchHistory(
                 user_id=current_user.id,
                 query=search_request.query,
-                backend=search_request.backend or 'default',
+                backend=backend,
                 mode='search',
-                search_params=str(search_request.to_dict()),
-                results_count=search_result.total_count
+                search_params=f"limit:{search_request.limit},backends:{search_request.backends}",
+                results_count=search_result.total_found
             )
             
             db.session.add(search_record)

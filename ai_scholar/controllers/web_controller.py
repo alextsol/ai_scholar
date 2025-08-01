@@ -19,7 +19,8 @@ class WebController:
         """Register all web UI routes"""
         self.blueprint.add_url_rule('/', 'index', self.index, methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
-        self.blueprint.add_url_rule('/history', 'history', self.history, methods=['GET'])
+        self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
+        self.blueprint.add_url_rule('/clear_history', 'clear_history', login_required(self.clear_history), methods=['POST'])
         self.blueprint.add_url_rule('/search', 'search_page', self.search_page, methods=['GET', 'POST'])
     
     def index(self):
@@ -76,7 +77,7 @@ class WebController:
                 else:
                     search_request = SearchRequest(
                         query=query,
-                        backend=selected_backend,
+                        backends=[selected_backend] if selected_backend else None,
                         limit=result_limit,
                         min_year=min_year,
                         max_year=max_year
@@ -84,9 +85,30 @@ class WebController:
                     search_result = self.search_service.search_papers(search_request)
                 
                 if search_result and search_result.papers:
+                    backend_used = (search_result.backends_used[0] if search_result.backends_used else "Unknown")
+                    
+                    # Convert Paper objects to dictionaries for UI display
+                    papers_as_dicts = []
+                    for paper in search_result.papers:
+                        if hasattr(paper, 'to_dict'):
+                            papers_as_dicts.append(paper.to_dict())
+                        elif isinstance(paper, dict):
+                            papers_as_dicts.append(paper)
+                        else:
+                            # Fallback for unknown paper types
+                            papers_as_dicts.append({
+                                'title': getattr(paper, 'title', 'No title'),
+                                'authors': getattr(paper, 'authors', 'No authors'),
+                                'year': getattr(paper, 'year', None),
+                                'url': getattr(paper, 'url', '#'),
+                                'citations': getattr(paper, 'citations', None),
+                                'source': getattr(paper, 'source', backend_used),
+                                'explanation': getattr(paper, 'explanation', None)
+                            })
+                    
                     results = self._group_results_by_source(
-                        search_result.papers, 
-                        default_source=selected_backend or search_result.backend_used or "Unknown"
+                        papers_as_dicts, 
+                        default_source=selected_backend or backend_used
                     )
                     context['results'] = results
                     context['papersCount'] = len(search_result.papers)
@@ -125,6 +147,21 @@ class WebController:
         except Exception as e:
             flash(f'Failed to load search history: {str(e)}', 'error')
             return redirect(url_for('web_main.index'))
+    
+    def clear_history(self):
+        """Clear user's search history"""
+        try:
+            if current_user.is_authenticated:
+                SearchHistory.query.filter_by(user_id=current_user.id).delete()
+                db.session.commit()
+                flash('Search history cleared successfully!', 'success')
+            else:
+                flash('You must be logged in to clear history.', 'error')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Failed to clear search history: {str(e)}', 'error')
+        
+        return redirect(url_for('web_main.history'))
     
     def search_page(self):
         """Dedicated search page with advanced options"""

@@ -50,17 +50,16 @@ class ServiceFactory:
         
         for name, provider in search_providers.items():
             def create_search_func(p):
-                def search_func(query, max_results=10):
+                def search_func(query, max_results=10, min_year=None, max_year=None):
                     try:
-                        from ..models.search_request import SearchRequest
-                        request = SearchRequest(
+                        # Call provider's search method with individual parameters
+                        result = p.search(
                             query=query,
-                            max_results=max_results,
-                            min_year=None,
-                            max_year=None
+                            limit=max_results,
+                            min_year=min_year,
+                            max_year=max_year
                         )
-                        result = p.search(request)
-                        return result.papers if result else []
+                        return result if result else []
                     except Exception as e:
                         return []
                 return search_func

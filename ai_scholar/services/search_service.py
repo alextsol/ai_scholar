@@ -28,7 +28,13 @@ class SearchService:
         """
         cleanup_expired_cache()
         
-        backend = search_request.backend or self.default_backend
+        # Handle multiple backends or default to single backend
+        backends = search_request.backends or [self.default_backend]
+        if not backends:
+            backends = [self.default_backend]
+        
+        # For now, use the first backend (can be enhanced later for multi-backend search)
+        backend = backends[0]
         
         if backend not in self.search_providers:
             raise ValueError(f"Unknown backend '{backend}' specified")
@@ -45,10 +51,12 @@ class SearchService:
         if cached_result is not None:
             return SearchResult(
                 papers=cached_result,
-                total_count=len(cached_result),
-                backend_used=backend,
-                search_time=0.0,
-                from_cache=True
+                query=search_request.query,
+                total_found=len(cached_result),
+                processing_time=0.0,
+                ranking_mode=search_request.ranking_mode,
+                backends_used=[backend],
+                cache_hit=True
             )
         
         start_time = time.time()
@@ -72,10 +80,12 @@ class SearchService:
         
         return SearchResult(
             papers=papers,
-            total_count=len(papers),
-            backend_used=backend,
-            search_time=search_time,
-            from_cache=False
+            query=search_request.query,
+            total_found=len(papers),
+            processing_time=search_time,
+            ranking_mode=search_request.ranking_mode,
+            backends_used=[backend],
+            cache_hit=False
         )
     
     @retry(
@@ -108,10 +118,17 @@ class SearchService:
         if not search_request.query or not search_request.query.strip():
             return False
         
-        if search_request.backend and search_request.backend not in self.search_providers:
+        # Handle multiple backends or default to single backend
+        backends = search_request.backends or [self.default_backend]
+        if not backends:
+            backends = [self.default_backend]
+        
+        # For now, validate the first backend (can be enhanced later)
+        backend = backends[0]
+        if backend not in self.search_providers:
             return False
         
-        backend = search_request.backend or self.default_backend
+        backend = backend or self.default_backend
         provider = self.search_providers[backend]
         
         return provider.validate_query(search_request.query)

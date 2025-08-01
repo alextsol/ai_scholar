@@ -37,7 +37,7 @@ class PaperService:
         
         for backend_name, backend_func in self.search_providers.items():
             try:
-                result = backend_func(query, limit)
+                result = backend_func(query, limit, min_year, max_year)
                 papers = self._extract_papers_from_result(result, backend_name)
                 
                 if papers:
@@ -50,11 +50,11 @@ class PaperService:
         if not aggregated_papers:
             return SearchResult(
                 papers=[],
-                total_count=0,
-                backend_used='aggregate',
-                sources_used=sources_used,
-                search_time=time.time() - start_time,
-                ranking_applied=False
+                query=query,
+                                total_found=0,
+                processing_time=time.time() - start_time,
+                ranking_mode=ranking_mode,
+                backends_used=sources_used
             )
         
         if min_year is not None or max_year is not None:
@@ -86,13 +86,30 @@ class PaperService:
         
         final_papers = self._merge_ranked_with_details(ranked_papers, aggregated_papers)
         
+        # Convert dict papers to Paper objects
+        paper_objects = []
+        for paper_dict in final_papers[:ai_result_limit]:
+            # Create Paper object from dictionary
+            paper_obj = Paper(
+                title=paper_dict.get('title', ''),
+                authors=paper_dict.get('authors', ''),
+                abstract=paper_dict.get('abstract', ''),
+                year=paper_dict.get('year'),
+                url=paper_dict.get('url', ''),
+                citations=paper_dict.get('citations', 0),
+                source=paper_dict.get('source', ''),
+                published=paper_dict.get('published', ''),
+                explanation=paper_dict.get('explanation', '')
+            )
+            paper_objects.append(paper_obj)
+        
         return SearchResult(
-            papers=final_papers[:ai_result_limit],
-            total_count=len(final_papers),
-            backend_used='aggregate',
-            sources_used=sources_used,
-            search_time=time.time() - start_time,
-            ranking_applied=ranking_applied
+            papers=paper_objects,
+            query=query,
+            total_found=len(final_papers),
+            processing_time=time.time() - start_time,
+            ranking_mode=ranking_mode,
+            backends_used=sources_used
         )
     
     def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
@@ -126,10 +143,10 @@ class PaperService:
         if isinstance(result, dict):
             if backend_name == "arxiv":
                 # Handle arXiv specific format
-                from utils.utils import format_items
+                from ...utils.utils import format_items
                 papers = format_items(result.get("results", []), result.get("mapping", {}))
             else:
-                from utils.utils import generic_requests_search
+                from ...utils.utils import generic_requests_search
                 papers = generic_requests_search(
                     result.get("url"), 
                     result.get("params"), 
@@ -150,8 +167,19 @@ class PaperService:
     def _filter_papers_by_year(self, papers: List[Dict[str, Any]], 
                               min_year: Optional[int], max_year: Optional[int]) -> List[Dict[str, Any]]:
         """Filter papers by publication year"""
-        from utils.utils import filter_results_by_year
-        return filter_results_by_year(papers, min_year, max_year)
+        if min_year is None and max_year is None:
+            return papers
+        
+        filtered_papers = []
+        for paper in papers:
+            try:
+                year_val = paper.get('year', 0)
+                year = int(year_val) if year_val is not None else 0
+                if (min_year is None or year >= min_year) and (max_year is None or year <= max_year):
+                    filtered_papers.append(paper)
+            except (ValueError, TypeError):
+                continue
+        return filtered_papers
     
     def _remove_duplicates(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Remove duplicate papers based on title similarity"""

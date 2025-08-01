@@ -12,8 +12,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Your Search History</h1>
             <div>
-                <a href="{{ url_for('main.index') }}" class="btn btn-primary">New Search</a>
-                <form method="POST" action="{{ url_for('main.clear_history') }}" class="d-inline">
+                <a href="{{ url_for('web_main.index') }}" class="btn btn-primary">New Search</a>
+                <form method="POST" action="{{ url_for('web_main.clear_history') }}" class="d-inline">
                     <button type="submit" class="btn btn-danger" 
                             onclick="return confirm('Are you sure you want to clear all search history?')">
                         Clear History
@@ -72,7 +72,7 @@
                     <ul class="pagination justify-content-center">
                         {% if searches.has_prev %}
                             <li class="page-item">
-                                <a class="page-link" href="{{ url_for('history.history', page=searches.prev_num) }}">Previous</a>
+                                <a class="page-link" href="{{ url_for('web_main.history', page=searches.prev_num) }}">Previous</a>
                             </li>
                         {% endif %}
                         
@@ -80,7 +80,7 @@
                             {% if page_num %}
                                 {% if page_num != searches.page %}
                                     <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('history.history', page=page_num) }}">{{ page_num }}</a>
+                                        <a class="page-link" href="{{ url_for('web_main.history', page=page_num) }}">{{ page_num }}</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item active">
@@ -96,7 +96,7 @@
                         
                         {% if searches.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href="{{ url_for('history.history', page=searches.next_num) }}">Next</a>
+                                <a class="page-link" href="{{ url_for('web_main.history', page=searches.next_num) }}">Next</a>
                             </li>
                         {% endif %}
                     </ul>
@@ -107,7 +107,7 @@
             <div class="text-center mt-5">
                 <h3>No search history yet</h3>
                 <p class="text-muted">Start searching to build your history!</p>
-                <a href="{{ url_for('main.index') }}" class="btn btn-primary">Start Searching</a>
+                <a href="{{ url_for('web_main.index') }}" class="btn btn-primary">Start Searching</a>
             </div>
         {% endif %}
     </div>
