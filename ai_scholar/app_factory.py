@@ -19,22 +19,18 @@ class ApplicationFactory:
         self.config: Optional[Settings] = None
         self._initialized = False
     
-    def create_app(self, config_name: Optional[str] = None, use_new_architecture: bool = True) -> Flask:
+    def create_app(self, config_name: Optional[str] = None) -> Flask:
         """
         Create Flask application with new architecture
         
         Args:
             config_name: Configuration name to use
-            use_new_architecture: Whether to use new architecture (True) or legacy (False)
         """
         
         # Initialize configuration
         self.config = Settings()
         
-        if use_new_architecture:
-            return self._create_app_with_new_architecture(config_name)
-        else:
-            return self._create_app_legacy_mode(config_name)
+        return self._create_app_with_new_architecture(config_name)
     
     def _create_app_with_new_architecture(self, config_name: Optional[str]) -> Flask:
         """Create app with new MVC architecture"""
@@ -58,23 +54,12 @@ class ApplicationFactory:
         self._initialize_controllers(app)
         self._initialize_ai_bridge()
         
-        # Register legacy blueprints for backward compatibility
-        self._register_legacy_blueprints(app)
-        
         self.app = app
         self._initialized = True
         
         print("✅ AI Scholar initialized with new architecture")
         return app
-    
-    def _create_app_legacy_mode(self, config_name: Optional[str]) -> Flask:
-        """Create app with legacy architecture (fallback)"""
-        print("⚠️  Initializing AI Scholar in legacy mode...")
-        
-        # Use existing create_app function
-        from app import create_app
-        return create_app(config_name)
-    
+
     def _configure_flask_app(self, app: Flask, config_name: Optional[str]):
         """Configure Flask application"""
         # Import existing config
@@ -146,40 +131,20 @@ class ApplicationFactory:
         
         controllers = list(controller_registry.get_all_controllers().keys())
         print(f"   - Controllers: {controllers}")
-    
-    def _initialize_ai_bridge(self):
-        """Initialize AI bridge for backward compatibility"""
-        print("🌉 Initializing AI bridge...")
-        ai_bridge.initialize()
-    
-    def _register_legacy_blueprints(self, app: Flask):
-        """Register legacy blueprints for backward compatibility"""
-        print("🔗 Registering legacy blueprints...")
         
-        try:
-            # Try to register existing blueprints
-            from .endpoints.endpoints import bp as main_bp
-            app.register_blueprint(main_bp, url_prefix='/legacy')
-            print("   - Legacy main blueprint registered")
-        except ImportError as e:
-            print(f"   - Warning: Could not register legacy main blueprint: {e}")
-        
+        # Register auth blueprint (still needed for user authentication)
         try:
             from .endpoints.auth import auth_bp
             app.register_blueprint(auth_bp, url_prefix='/auth')
             print("   - Auth blueprint registered")
         except ImportError as e:
             print(f"   - Warning: Could not register auth blueprint: {e}")
-        
-        try:
-            from .endpoints.history import history_bp
-            app.register_blueprint(history_bp, url_prefix='/legacy/history')
-            print("   - History blueprint registered")
-        except ImportError as e:
-            print(f"   - Warning: Could not register history blueprint: {e}")
-        
-        print("   - Legacy blueprints registration completed")
     
+    def _initialize_ai_bridge(self):
+        """Initialize AI bridge for backward compatibility"""
+        print("🌉 Initializing AI bridge...")
+        ai_bridge.initialize()
+
     def get_app(self) -> Optional[Flask]:
         """Get the Flask application instance"""
         return self.app
