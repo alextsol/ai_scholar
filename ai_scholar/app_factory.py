@@ -157,20 +157,28 @@ class ApplicationFactory:
         print("🔗 Registering legacy blueprints...")
         
         try:
-            # Register existing blueprints
+            # Try to register existing blueprints
             from .endpoints.endpoints import bp as main_bp
-            from .endpoints.auth import auth_bp
-            from .endpoints.history import history_bp
-            
-            # Register with different URL prefixes to avoid conflicts
             app.register_blueprint(main_bp, url_prefix='/legacy')
-            app.register_blueprint(auth_bp, url_prefix='/auth')
-            app.register_blueprint(history_bp, url_prefix='/legacy/history')
-            
-            print("   - Legacy blueprints registered with /legacy prefix")
-            
+            print("   - Legacy main blueprint registered")
         except ImportError as e:
-            print(f"   - Warning: Could not register legacy blueprints: {e}")
+            print(f"   - Warning: Could not register legacy main blueprint: {e}")
+        
+        try:
+            from .endpoints.auth import auth_bp
+            app.register_blueprint(auth_bp, url_prefix='/auth')
+            print("   - Auth blueprint registered")
+        except ImportError as e:
+            print(f"   - Warning: Could not register auth blueprint: {e}")
+        
+        try:
+            from .endpoints.history import history_bp
+            app.register_blueprint(history_bp, url_prefix='/legacy/history')
+            print("   - History blueprint registered")
+        except ImportError as e:
+            print(f"   - Warning: Could not register history blueprint: {e}")
+        
+        print("   - Legacy blueprints registration completed")
     
     def get_app(self) -> Optional[Flask]:
         """Get the Flask application instance"""

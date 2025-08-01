@@ -55,19 +55,43 @@ class ServiceFactory:
     
     def _create_paper_service(self) -> None:
         """Create paper service with all necessary dependencies"""
-        # Get legacy search functions for backward compatibility
-        from ..paper_search import BACKENDS
+        # Create legacy-compatible BACKENDS from new providers
+        backends = {}
+        
+        # Get all search providers
+        search_providers = provider_registry.get_all_search_providers()
+        
+        # Create legacy-style search functions from new providers
+        for name, provider in search_providers.items():
+            def create_search_func(p):
+                def search_func(query, max_results=10):
+                    try:
+                        from ..models.search_request import SearchRequest
+                        request = SearchRequest(
+                            query=query,
+                            max_results=max_results,
+                            min_year=None,
+                            max_year=None
+                        )
+                        result = p.search(request)
+                        return result.papers if result else []
+                    except Exception as e:
+                        print(f"Error in legacy search wrapper for {p.__class__.__name__}: {e}")
+                        return []
+                return search_func
+            
+            backends[name] = create_search_func(provider)
         
         ai_provider = provider_registry.get_ai_provider()
         ranking_provider = None  # TODO: Implement ranking provider
         
-        if BACKENDS:
-            # Create service even without AI provider - will use AI bridge fallback
-            self.services['paper'] = PaperService(BACKENDS, ai_provider, ranking_provider)
+        if backends:
+            # Create service with new provider-based backends
+            self.services['paper'] = PaperService(backends, ai_provider, ranking_provider)
             if ai_provider:
-                print(f"Created PaperService with {len(BACKENDS)} legacy backends and AI provider: {ai_provider.get_provider_name()}")
+                print(f"Created PaperService with {len(backends)} legacy backends and AI provider: {ai_provider.get_provider_name()}")
             else:
-                print(f"Created PaperService with {len(BACKENDS)} legacy backends (using AI bridge fallback)")
+                print(f"Created PaperService with {len(backends)} legacy backends (using AI bridge fallback)")
         else:
             print("Warning: Cannot create PaperService - no search backends available")
     
