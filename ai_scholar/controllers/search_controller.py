@@ -1,6 +1,5 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for
+from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
-from typing import Optional, Dict, Any, List
 from ..services.search_service import SearchService
 from ..models.search_request import SearchRequest
 from ..models.search_result import SearchResult
@@ -28,7 +27,6 @@ class SearchController:
             if not data:
                 return jsonify({'error': 'No data provided'}), 400
             
-            # Validate and create search request
             search_request = SearchRequest(
                 query=data.get('query', ''),
                 backend=data.get('backend'),
@@ -40,10 +38,7 @@ class SearchController:
             if not search_request.validate():
                 return jsonify({'error': 'Invalid search parameters'}), 400
             
-            # Perform search
             search_result = self.search_service.search_papers(search_request)
-            
-            # Save search history
             self._save_search_history(search_request, search_result)
             
             return jsonify({
@@ -112,5 +107,3 @@ class SearchController:
             
         except Exception as e:
             db.session.rollback()
-            # Log error but don't fail the search
-            print(f"Failed to save search history: {e}")

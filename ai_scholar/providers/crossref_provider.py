@@ -46,7 +46,6 @@ class CrossRefProvider(ISearchProvider):
             return []
             
         except Exception as e:
-            print(f"CrossRef search error: {e}")
             return []
     
     def get_provider_name(self) -> str:
@@ -115,15 +114,12 @@ class CrossRefProvider(ISearchProvider):
                     time.sleep(int(retry_after))
                     continue
                 elif response.status_code in [403, 404]:
-                    print(f"CrossRef API error: {response.status_code}")
                     return None
                 else:
                     if attempt == max_retries - 1:
-                        print(f"CrossRef API returned status code: {response.status_code}")
                         return None
                     
             except requests.exceptions.RequestException as e:
-                print(f"CrossRef request attempt {attempt + 1} failed: {e}")
                 if attempt == max_retries - 1:
                     return None
         
@@ -196,7 +192,6 @@ class CrossRefProvider(ISearchProvider):
                 standardized.append(standardized_paper)
                 
             except Exception as e:
-                print(f"Error standardizing CrossRef paper: {e}")
                 continue
         
         return standardized
@@ -220,6 +215,6 @@ class CrossRefProvider(ISearchProvider):
                     return self._standardize_papers([paper_data])[0]
             
         except Exception as e:
-            print(f"Error getting paper by DOI: {e}")
+            pass
         
         return None

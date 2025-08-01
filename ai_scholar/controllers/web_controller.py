@@ -18,24 +18,12 @@ class WebController:
     def _register_routes(self):
         """Register all web UI routes"""
         self.blueprint.add_url_rule('/', 'index', self.index, methods=['GET', 'POST'])
-        self.blueprint.add_url_rule('/landing', 'landing', self.landing, methods=['GET'])
         self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
         self.blueprint.add_url_rule('/history', 'history', self.history, methods=['GET'])
         self.blueprint.add_url_rule('/search', 'search_page', self.search_page, methods=['GET', 'POST'])
-        self.blueprint.add_url_rule('/about', 'about', self.about, methods=['GET'])
-    
-    def landing(self):
-        """Show landing page for unauthenticated users"""
-        return render_template('landing.html')
     
     def index(self):
         """Main search interface"""
-        # For now, allow access without authentication for testing
-        # TODO: Re-enable authentication when auth system is fully configured
-        # if not current_user.is_authenticated:
-        #     return redirect(url_for('web_main.landing'))
-        
-        # Initialize default values
         context = {
             'query': '',
             'selected_backend': '',
@@ -47,12 +35,11 @@ class WebController:
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
-            'recent_searches': []  # current_user.get_recent_searches(10) if current_user.is_authenticated else []
+            'recent_searches': []
         }
         
         if request.method == 'POST':
             try:
-                # Extract form data
                 query = request.form.get('query', '').strip()
                 mode = request.form.get('mode', '')
                 selected_backend = request.form.get('backend', '')
@@ -62,7 +49,6 @@ class WebController:
                 ai_result_limit = self._parse_int(request.form.get('ai_result_limit'), default=10)
                 ranking_mode = request.form.get('ranking_mode', 'ai')
                 
-                # Update context
                 context.update({
                     'query': query,
                     'selected_backend': selected_backend,
@@ -78,7 +64,6 @@ class WebController:
                     flash('Please enter a search query', 'error')
                     return render_template('index.html', **context)
                 
-                # Perform search based on mode
                 if mode == "aggregate":
                     search_result = self.paper_service.aggregate_and_rank_papers(
                         query=query,
@@ -98,7 +83,6 @@ class WebController:
                     )
                     search_result = self.search_service.search_papers(search_request)
                 
-                # Process results for display
                 if search_result and search_result.papers:
                     results = self._group_results_by_source(
                         search_result.papers, 
@@ -107,7 +91,6 @@ class WebController:
                     context['results'] = results
                     context['papersCount'] = len(search_result.papers)
                     
-                    # Save search history
                     self._save_web_search_history(
                         query, selected_backend or mode, mode, 
                         result_limit, ai_result_limit, ranking_mode,
@@ -124,7 +107,6 @@ class WebController:
     
     def results(self):
         """Display search results (for AJAX requests)"""
-        # This could be used for dynamic result loading
         return jsonify({'message': 'Results endpoint'})
     
     @login_required
@@ -146,15 +128,9 @@ class WebController:
     
     def search_page(self):
         """Dedicated search page with advanced options"""
-        # Temporarily disable authentication for testing
-        # if not current_user.is_authenticated:
-        #     return redirect(url_for('web_main.landing'))
-        
         if request.method == 'POST':
-            # Handle search form submission
-            return self.index()  # Reuse index logic
+            return self.index()
         
-        # Show search form with advanced options
         context = {
             'query': '',
             'selected_backend': '',
@@ -166,50 +142,13 @@ class WebController:
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
-            'recent_searches': [],  # current_user.get_recent_searches(10) if current_user.is_authenticated else [],
+            'recent_searches': [],
             'available_backends': ['arxiv', 'semantic_scholar', 'crossref', 'core'],
             'advanced_mode': True
         }
         
         return render_template('search.html', **context)
-    
-    def about(self):
-        """System information and status page"""
-        try:
-            from ..providers import provider_registry
-        except ImportError:
-            # Fallback if import fails
-            provider_registry = None
-        
-        # Provide safe defaults if provider_registry is not available
-        if provider_registry:
-            search_providers = list(provider_registry.get_all_search_providers().keys())
-            ai_providers = list(provider_registry.get_all_ai_providers().keys())
-        else:
-            search_providers = ['arxiv', 'semantic_scholar', 'crossref', 'core']
-            ai_providers = ['gemini_key_1', 'gemini_key_2', 'gemini_key_3', 'openrouter']
-        
-        system_info = {
-            'architecture': 'Professional MVC Architecture',
-            'search_providers': search_providers,
-            'ai_providers': ai_providers,
-            'services': ['search', 'paper', 'ai'],
-            'features': [
-                'Multi-provider paper search (arXiv, Semantic Scholar, CrossRef, CORE)',
-                'AI-powered paper ranking and insights (Gemini, OpenRouter)',
-                'Professional MVC architecture with interface-driven design',
-                'RESTful API endpoints for programmatic access',
-                'Responsive web interface with dark mode support',
-                'Search history and user preferences',
-                'Rate limiting and error handling',
-                'Caching layer for improved performance',
-                'Backward compatibility with legacy interface',
-                'Comprehensive logging and analytics'
-            ]
-        }
-        
-        return render_template('about.html', system_info=system_info)
-    
+
     def _group_results_by_source(self, papers: List[Dict[str, Any]], default_source: str = "Unknown") -> List[Dict[str, Any]]:
         """Group search results by their source"""
         groups = {}
@@ -220,7 +159,6 @@ class WebController:
                 if source not in groups:
                     groups[source] = []
                 
-                # Format paper for display
                 citation_count = paper.get('citations') or paper.get('citation') or 'N/A'
                 
                 paper_details = {
@@ -236,7 +174,6 @@ class WebController:
                 
                 groups[source].append(paper_details)
         
-        # Convert to list format expected by template
         results = []
         for source, papers in groups.items():
             results.append({
@@ -275,7 +212,6 @@ class WebController:
                 results_count=results_count
             )
             
-            # Generate results HTML for history
             if results:
                 from flask import render_template_string
                 results_html = render_template_string('''
@@ -303,4 +239,3 @@ class WebController:
             
         except Exception as e:
             db.session.rollback()
-            print(f"Failed to save web search history: {e}")

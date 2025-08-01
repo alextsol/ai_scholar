@@ -45,37 +45,22 @@ class ProviderRegistry:
     
     def _init_search_providers(self, config: Any):
         """Initialize search providers"""
-        # arXiv provider - always available
         self.search_providers['arxiv'] = ArxivSearchProvider()
-        print(f"   ✅ Initialized arXiv provider")
         
-        # Semantic Scholar provider
         semantic_api_key = getattr(config, 'SEMANTIC_SCHOLAR_API_KEY', None)
         self.search_providers['semantic_scholar'] = SemanticScholarProvider(semantic_api_key)
-        print(f"   ✅ Initialized Semantic Scholar provider")
         
-        # CrossRef provider - no API key required for basic access
         crossref_api_key = getattr(config, 'CROSSREF_API_KEY', None)
         crossref_mailto = getattr(config, 'CROSSREF_MAILTO', None)
         self.search_providers['crossref'] = CrossRefProvider(crossref_api_key, crossref_mailto)
-        print(f"   ✅ Initialized CrossRef provider")
         
-        # CORE provider - API key recommended but not required
         core_api_key = getattr(config, 'CORE_API_KEY', None)
         self.search_providers['core'] = COREProvider(core_api_key)
-        if core_api_key:
-            print(f"   ✅ Initialized CORE provider (with API key)")
-        else:
-            print(f"   ⚠️  Initialized CORE provider (without API key - limited access)")
-        
-        print(f"Initialized {len(self.search_providers)} search providers")
     
     def _init_ai_providers(self, config: Any):
         """Initialize AI providers"""
-        # Import your existing config
         from ..config import AIConfig
         
-        # Gemini providers - support multiple API keys
         google_api_keys = [key for key in AIConfig.GOOGLE_API_KEYS if key]
         if google_api_keys:
             for i, api_key in enumerate(google_api_keys):
@@ -85,38 +70,25 @@ class ProviderRegistry:
                         api_key=api_key, 
                         model_name=AIConfig.GEMINI_MODEL
                     )
-                    print(f"   ✅ Initialized {provider_name}")
                 except Exception as e:
-                    print(f"   ❌ Failed to initialize {provider_name}: {e}")
+                    pass
         
-        # OpenRouter provider
         if AIConfig.OPENROUTER_API_KEY:
             try:
                 self.ai_providers['openrouter'] = OpenRouterProvider(
                     api_key=AIConfig.OPENROUTER_API_KEY,
                     model_name=AIConfig.OPENROUTER_MODEL
                 )
-                print(f"   ✅ Initialized OpenRouter provider")
             except Exception as e:
-                print(f"   ❌ Failed to initialize OpenRouter: {e}")
-        
-        print(f"Initialized {len(self.ai_providers)} AI providers")
-        
-        if not self.ai_providers:
-            print("⚠️  No AI providers available - check your API keys in .env file")
-            print("   Required environment variables:")
-            print("   - GOOGLE_API_KEY, GOOGLE_API_KEY2, GOOGLE_API_KEY3")
-            print("   - HORIZON_ALPHA_KEY (for OpenRouter)")
+                pass
     
     def _init_cache_providers(self, config: Any):
         """Initialize cache providers"""
-        # TODO: Implement cache providers (Redis, File, Memory)
-        print("Cache providers initialization - TODO")
+        pass
     
     def _init_ranking_providers(self, config: Any):
         """Initialize ranking providers"""
-        # TODO: Implement ranking providers (Citation-based, Year-based, etc.)
-        print("Ranking providers initialization - TODO")
+        pass
     
     def get_search_provider(self, name: str) -> Optional[ISearchProvider]:
         """Get a search provider by name"""
@@ -127,7 +99,6 @@ class ProviderRegistry:
         if name:
             return self.ai_providers.get(name)
         
-        # Return first available provider
         for provider in self.ai_providers.values():
             if provider.is_available():
                 return provider

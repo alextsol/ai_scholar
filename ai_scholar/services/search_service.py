@@ -28,13 +28,11 @@ class SearchService:
         """
         cleanup_expired_cache()
         
-        # Determine backend to use
         backend = search_request.backend or self.default_backend
         
         if backend not in self.search_providers:
             raise ValueError(f"Unknown backend '{backend}' specified")
         
-        # Check cache first
         cache_key = get_cache_key(
             search_request.query, 
             search_request.limit, 
@@ -53,7 +51,6 @@ class SearchService:
                 from_cache=True
             )
         
-        # Perform search with retry logic
         start_time = time.time()
         papers = self._search_with_retry(
             backend, 
@@ -64,11 +61,9 @@ class SearchService:
         )
         search_time = time.time() - start_time
         
-        # Cache results
         if papers and not isinstance(papers, str):
             cache_result(cache_key, papers)
         
-        # Handle error responses
         if isinstance(papers, str) and papers.startswith("Error:"):
             raise RuntimeError(papers)
         
@@ -93,7 +88,6 @@ class SearchService:
                           min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search with retry logic for reliability"""
         
-        # Add delay for semantic scholar to avoid rate limiting
         if backend == "semantic_scholar":
             time.sleep(random.uniform(2, 5))
         

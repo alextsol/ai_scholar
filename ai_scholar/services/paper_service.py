@@ -35,7 +35,6 @@ class PaperService:
         aggregated_papers = []
         sources_used = []
         
-        # Aggregate from all available sources
         for backend_name, backend_func in self.search_providers.items():
             try:
                 result = backend_func(query, limit)
@@ -46,7 +45,6 @@ class PaperService:
                     sources_used.append(backend_name)
                     
             except Exception as e:
-                print(f"Error with backend {backend_name}: {e}")
                 continue
         
         if not aggregated_papers:
@@ -59,16 +57,13 @@ class PaperService:
                 ranking_applied=False
             )
         
-        # Filter by year if specified
         if min_year is not None or max_year is not None:
             aggregated_papers = self._filter_papers_by_year(
                 aggregated_papers, min_year, max_year
             )
         
-        # Remove duplicates
         unique_papers = self._remove_duplicates(aggregated_papers)
         
-        # Rank papers
         ranked_papers = []
         ranking_applied = False
         
@@ -79,7 +74,6 @@ class PaperService:
                 )
                 ranking_applied = True
             except Exception as e:
-                print(f"AI ranking failed: {e}")
                 ranked_papers = unique_papers[:ai_result_limit]
         elif ranking_mode == 'citations':
             ranked_papers = self._rank_by_citations(unique_papers, ai_result_limit)
@@ -90,7 +84,6 @@ class PaperService:
         else:
             ranked_papers = unique_papers[:ai_result_limit]
         
-        # Merge ranked results with full paper details
         final_papers = self._merge_ranked_with_details(ranked_papers, aggregated_papers)
         
         return SearchResult(
@@ -104,8 +97,6 @@ class PaperService:
     
     def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific paper"""
-        # This would typically query a database or external API
-        # For now, return None as placeholder
         return None
     
     def compare_papers(self, papers: List[Dict[str, Any]], 
@@ -138,7 +129,6 @@ class PaperService:
                 from utils.utils import format_items
                 papers = format_items(result.get("results", []), result.get("mapping", {}))
             else:
-                # Handle generic format
                 from utils.utils import generic_requests_search
                 papers = generic_requests_search(
                     result.get("url"), 
@@ -149,11 +139,9 @@ class PaperService:
         elif isinstance(result, list):
             papers = result
         
-        # Validate papers format
         if not isinstance(papers, list) or not all(isinstance(paper, dict) for paper in papers):
             return []
         
-        # Add source information
         for paper in papers:
             paper['source'] = backend_name
         
@@ -213,14 +201,12 @@ class PaperService:
             
             for full_paper in all_papers:
                 if full_paper.get('title', '').lower().strip() == title:
-                    # Merge ranking information
                     merged_paper = full_paper.copy()
                     if 'explanation' in ranked_paper:
                         merged_paper['explanation'] = ranked_paper['explanation']
                     merged.append(merged_paper)
                     break
             else:
-                # If not found, use the ranked paper as is
                 merged.append(ranked_paper)
         
         return merged
@@ -264,10 +250,8 @@ class PaperService:
     
     def _compare_by_relevance(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Compare papers by relevance (placeholder implementation)"""
-        # This would need actual relevance scoring logic
         relevance_data = []
         for i, paper in enumerate(papers):
-            # Simple placeholder scoring based on title length as relevance
             relevance_score = len(paper.get('title', '')) / 100.0
             relevance_data.append({'index': i, 'relevance': relevance_score})
         

@@ -218,9 +218,8 @@ Format your response as a JSON array with this structure:
                 return ranked_papers
             
         except Exception as e:
-            print(f"Error parsing ranking response: {e}")
+            pass
         
-        # Fallback: return original papers with generic explanations
         fallback_papers = []
         for i, paper in enumerate(papers[:limit]):
             paper_copy = paper.copy()

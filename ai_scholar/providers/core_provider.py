@@ -43,7 +43,6 @@ class COREProvider(ISearchProvider):
             return []
             
         except Exception as e:
-            print(f"CORE search error: {e}")
             return []
     
     def get_provider_name(self) -> str:
@@ -121,18 +120,14 @@ class COREProvider(ISearchProvider):
                     time.sleep(int(retry_after))
                     continue
                 elif response.status_code == 401:
-                    print("CORE API requires authentication - please provide API key")
                     return None
                 elif response.status_code == 403:
-                    print("CORE API access forbidden - check API key")
                     return None
                 else:
                     if attempt == max_retries - 1:
-                        print(f"CORE API returned status code: {response.status_code}")
                         return None
                     
             except requests.exceptions.RequestException as e:
-                print(f"CORE request attempt {attempt + 1} failed: {e}")
                 if attempt == max_retries - 1:
                     return None
         
@@ -219,7 +214,6 @@ class COREProvider(ISearchProvider):
                 standardized.append(standardized_paper)
                 
             except Exception as e:
-                print(f"Error standardizing CORE paper: {e}")
                 continue
         
         return standardized
@@ -242,6 +236,6 @@ class COREProvider(ISearchProvider):
                     return self._standardize_papers([paper_data])[0]
             
         except Exception as e:
-            print(f"Error getting paper by CORE ID: {e}")
+            pass
         
         return None

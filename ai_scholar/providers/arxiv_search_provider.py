@@ -38,7 +38,6 @@ class ArxivSearchProvider(ISearchProvider):
             return []
             
         except Exception as e:
-            print(f"ArXiv search error: {e}")
             return []
     
     def get_provider_name(self) -> str:
@@ -103,11 +102,9 @@ class ArxivSearchProvider(ISearchProvider):
                     time.sleep(delay * 2)
                     continue
                 else:
-                    print(f"arXiv API returned status code: {response.status_code}")
                     return None
                     
             except requests.exceptions.RequestException as e:
-                print(f"arXiv request attempt {attempt + 1} failed: {e}")
                 if attempt == max_retries - 1:
                     return None
         
@@ -187,9 +184,9 @@ class ArxivSearchProvider(ISearchProvider):
                     papers.append(paper)
                     
         except ET.ParseError as e:
-            print(f"Error parsing arXiv XML response: {e}")
+            pass
         except Exception as e:
-            print(f"Unexpected error parsing arXiv response: {e}")
+            pass
         
         return papers
     

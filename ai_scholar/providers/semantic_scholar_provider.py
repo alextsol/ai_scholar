@@ -46,7 +46,6 @@ class SemanticScholarProvider(ISearchProvider):
             return []
             
         except Exception as e:
-            print(f"Semantic Scholar search error: {e}")
             return []
     
     def get_provider_name(self) -> str:
@@ -121,16 +120,13 @@ class SemanticScholarProvider(ISearchProvider):
                     else:
                         time.sleep(base_delay * 2)
                     continue
-                elif response.status_code == 403:  # Forbidden
-                    print("Semantic Scholar API access forbidden - check API key")
+                elif response.status_code == 403:
                     return None
                 else:
-                    print(f"Semantic Scholar API returned status code: {response.status_code}")
                     if attempt == max_retries - 1:
                         return None
                     
             except requests.exceptions.RequestException as e:
-                print(f"Semantic Scholar request attempt {attempt + 1} failed: {e}")
                 if attempt == max_retries - 1:
                     return None
         
@@ -198,7 +194,6 @@ class SemanticScholarProvider(ISearchProvider):
                 standardized.append(standardized_paper)
                 
             except Exception as e:
-                print(f"Error standardizing paper: {e}")
                 continue
         
         return standardized
@@ -224,6 +219,6 @@ class SemanticScholarProvider(ISearchProvider):
                 return self._standardize_papers([paper_data])[0]
             
         except Exception as e:
-            print(f"Error getting paper details: {e}")
+            pass
         
         return None

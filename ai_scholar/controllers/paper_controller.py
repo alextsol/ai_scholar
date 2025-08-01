@@ -1,14 +1,12 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for
+from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
-from typing import Optional, Dict, Any, List
+from typing import Optional
 from ..services.paper_service import PaperService
 from ..services.ai_service import AIService
-from ..models.search_request import SearchRequest
 from ..models.search_result import SearchResult
 from ..models.database import db, SearchHistory
 
 class PaperController:
-    """Controller handling paper aggregation and ranking requests"""
     
     def __init__(self, paper_service: PaperService, ai_service: AIService):
         self.paper_service = paper_service
@@ -17,7 +15,6 @@ class PaperController:
         self._register_routes()
     
     def _register_routes(self):
-        """Register all paper-related routes"""
         self.blueprint.add_url_rule('/aggregate', 'aggregate_papers', self.aggregate_papers, methods=['POST'])
         self.blueprint.add_url_rule('/rank', 'rank_papers', self.rank_papers, methods=['POST'])
         self.blueprint.add_url_rule('/<paper_id>/details', 'get_paper_details', self.get_paper_details, methods=['GET'])
@@ -25,13 +22,11 @@ class PaperController:
     
     @login_required
     def aggregate_papers(self):
-        """Handle paper aggregation requests"""
         try:
             data = request.get_json()
             if not data:
                 return jsonify({'error': 'No data provided'}), 400
             
-            # Validate request
             query = data.get('query', '')
             limit = data.get('limit', 100)
             ai_result_limit = data.get('ai_result_limit', 10)
@@ -42,7 +37,6 @@ class PaperController:
             if not query.strip():
                 return jsonify({'error': 'Query is required'}), 400
             
-            # Aggregate papers from multiple sources
             aggregated_result = self.paper_service.aggregate_and_rank_papers(
                 query=query,
                 limit=limit,
@@ -52,7 +46,6 @@ class PaperController:
                 max_year=max_year
             )
             
-            # Save search history
             self._save_aggregation_history(
                 query, limit, ai_result_limit, ranking_mode, 
                 min_year, max_year, aggregated_result
@@ -72,7 +65,6 @@ class PaperController:
     
     @login_required
     def rank_papers(self):
-        """Handle paper ranking requests"""
         try:
             data = request.get_json()
             if not data:
@@ -89,7 +81,6 @@ class PaperController:
             if not query.strip():
                 return jsonify({'error': 'Query is required for ranking'}), 400
             
-            # Rank papers using AI service
             ranked_papers = self.ai_service.rank_papers(
                 query=query,
                 papers=papers,
@@ -109,9 +100,7 @@ class PaperController:
     
     @login_required
     def get_paper_details(self, paper_id: str):
-        """Get detailed information about a specific paper"""
         try:
-            # This would typically fetch from a database or external API
             paper_details = self.paper_service.get_paper_details(paper_id)
             
             if not paper_details:
@@ -127,7 +116,6 @@ class PaperController:
     
     @login_required
     def compare_papers(self):
-        """Compare multiple papers"""
         try:
             data = request.get_json()
             if not data:
@@ -139,7 +127,6 @@ class PaperController:
             if len(papers) < 2:
                 return jsonify({'error': 'At least 2 papers required for comparison'}), 400
             
-            # Perform comparison
             comparison_result = self.paper_service.compare_papers(
                 papers=papers,
                 criteria=comparison_criteria
@@ -157,7 +144,6 @@ class PaperController:
     def _save_aggregation_history(self, query: str, limit: int, ai_result_limit: int, 
                                 ranking_mode: str, min_year: Optional[int], 
                                 max_year: Optional[int], result: SearchResult):
-        """Save aggregation search to history"""
         try:
             search_params = {
                 'limit': limit,
@@ -181,4 +167,3 @@ class PaperController:
             
         except Exception as e:
             db.session.rollback()
-            print(f"Failed to save aggregation history: {e}")

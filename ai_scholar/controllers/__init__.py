@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 from flask import Flask
 from .search_controller import SearchController
 from .paper_controller import PaperController
@@ -16,12 +16,10 @@ class ControllerRegistry:
         if self._initialized:
             return
         
-        # Extract services from kwargs
         search_service = services.get('search_service')
         paper_service = services.get('paper_service')
         ai_service = services.get('ai_service')
         
-        # Initialize controllers with dependencies
         if search_service:
             self.controllers['search'] = SearchController(search_service)
         
@@ -31,7 +29,6 @@ class ControllerRegistry:
         if search_service and paper_service:
             self.controllers['web'] = WebController(search_service, paper_service)
         
-        # Register all blueprints with Flask app
         self._register_blueprints(app)
         
         self._initialized = True
@@ -41,7 +38,6 @@ class ControllerRegistry:
         for name, controller in self.controllers.items():
             if hasattr(controller, 'blueprint'):
                 app.register_blueprint(controller.blueprint)
-                print(f"Registered {name} controller blueprint")
     
     def get_controller(self, name: str):
         """Get a controller by name"""
@@ -55,5 +51,4 @@ class ControllerRegistry:
         """Check if controllers have been initialized"""
         return self._initialized
 
-# Global controller registry instance
 controller_registry = ControllerRegistry()
