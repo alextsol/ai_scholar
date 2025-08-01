@@ -1,8 +1,8 @@
 from .prompts import ai_ranking_prompt, citation_ranking_prompt, ai_description_prompt
 from .ai_models import ai_models
 from .config import SearchConfig
-from .ai_utils import create_paper_summary, create_description_summary, calculate_final_score, validate_explanation
-from utils.utils import _safe_int_conversion, extract_arxiv_ids, update_papers_with_citations
+from .utils.ai_utils import create_paper_summary, create_description_summary, calculate_final_score, validate_explanation
+from .utils.helpers import _safe_int_conversion, extract_arxiv_ids, update_papers_with_citations
 
 def process_ai_batch(prompt, batch_num, total_batches, batch_type="processing"):
     try:

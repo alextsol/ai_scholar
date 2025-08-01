@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import current_user
 from ..paper_search import search_papers
 from ..paper_aggregator import aggregate_and_rank_papers
-from ..models import db, SearchHistory
+from ..models.database import db, SearchHistory
 
 bp = Blueprint('main', __name__)
 

@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 from typing import Optional, Dict, Any, List
 from .config import AIConfig
-from .ai_utils import parse_ai_response, is_quota_error
+from .utils.ai_utils import parse_ai_response, is_quota_error
 
 class AIModelManager:
     def __init__(self):
