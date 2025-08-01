@@ -87,12 +87,12 @@ class ApplicationFactory:
         app.config.from_object(config[config_name])
         
         # Initialize database
-        from .models.database import db
+        from .models import db
         db.init_app(app)
         
         # Initialize login manager
         from flask_login import LoginManager
-        from .models.database import User
+        from .models import User
         
         login_manager = LoginManager()
         login_manager.init_app(app)
