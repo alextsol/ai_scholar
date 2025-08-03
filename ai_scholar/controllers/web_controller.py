@@ -5,6 +5,11 @@ from ..services.search_service import SearchService
 from ..services.paper_service import PaperService
 from ..models.search_request import SearchRequest
 from ..models.database import db, SearchHistory
+from ..utils.exceptions import AIScholarError, RateLimitError, APIUnavailableError, ValidationError
+from ..utils.error_handler import ErrorHandler
+import logging
+
+logger = logging.getLogger(__name__)
 
 class WebController:
     """Controller handling web UI requests (traditional MVC views)"""
@@ -139,8 +144,22 @@ class WebController:
                     results_for_history
                 )
                     
+            except AIScholarError as e:
+                # Handle custom exceptions with user-friendly messages
+                ErrorHandler.log_error(e, "web_search", str(current_user.id) if current_user.is_authenticated else None)
+                flash(e.user_message, 'error')
+                
+                # For rate limit errors, provide more specific guidance
+                if isinstance(e, RateLimitError):
+                    retry_time = e.retry_after_seconds
+                    if retry_time and retry_time < 300:  # Less than 5 minutes
+                        time_str = f"{retry_time} seconds" if retry_time < 60 else f"{retry_time // 60} minutes"
+                        flash(f"Please wait {time_str} before searching again.", 'info')
+                
             except Exception as e:
-                flash(f'Search failed: {str(e)}', 'error')
+                # Handle unexpected errors
+                ErrorHandler.log_error(e, "web_search", str(current_user.id) if current_user.is_authenticated else None)
+                flash('An unexpected error occurred. Please try again later.', 'error')
         
         return render_template('index.html', **context)
     

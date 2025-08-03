@@ -4,6 +4,11 @@ from ..services.search_service import SearchService
 from ..models.search_request import SearchRequest
 from ..models.search_result import SearchResult
 from ..models.database import db, SearchHistory
+from ..utils.exceptions import AIScholarError, ValidationError, SearchError
+from ..utils.error_handler import ErrorHandler, handle_api_error
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SearchController:
     """Controller handling search-related HTTP requests"""
@@ -20,35 +25,39 @@ class SearchController:
         self.blueprint.add_url_rule('/history/<int:search_id>', 'get_search_details', self.get_search_details, methods=['GET'])
     
     @login_required
+    @handle_api_error
     def api_search(self):
         """Handle API search requests"""
-        try:
-            data = request.get_json()
-            if not data:
-                return jsonify({'error': 'No data provided'}), 400
-            
-            search_request = SearchRequest(
-                query=data.get('query', ''),
-                backends=[data.get('backend')] if data.get('backend') else None,
-                limit=data.get('limit', 100),
-                min_year=data.get('min_year'),
-                max_year=data.get('max_year')
-            )
-            
-            # Validation is handled in __post_init__
-            search_result = self.search_service.search_papers(search_request)
-            self._save_search_history(search_request, search_result)
-            
-            return jsonify({
-                'success': True,
-                'results': search_result.papers,
-                'total_count': search_result.total_found,
-                'backend_used': search_result.backends_used[0] if search_result.backends_used else 'unknown',
-                'search_time': search_result.processing_time
-            })
-            
-        except Exception as e:
-            return jsonify({'error': f'Search failed: {str(e)}'}), 500
+        data = request.get_json()
+        if not data:
+            raise ValidationError("No data provided", user_message="Please provide search parameters.")
+        
+        query = data.get('query', '').strip()
+        if not query:
+            raise ValidationError("Query is required", user_message="Please enter a search query.")
+        
+        if len(query) < 3:
+            raise ValidationError("Query too short", user_message="Search query must be at least 3 characters long.")
+        
+        search_request = SearchRequest(
+            query=query,
+            backends=[data.get('backend')] if data.get('backend') else None,
+            limit=data.get('limit', 100),
+            min_year=data.get('min_year'),
+            max_year=data.get('max_year')
+        )
+        
+        # Validation is handled in __post_init__
+        search_result = self.search_service.search_papers(search_request)
+        self._save_search_history(search_request, search_result)
+        
+        return jsonify({
+            'success': True,
+            'results': search_result.papers,
+            'total_count': search_result.total_found,
+            'backend_used': search_result.backends_used[0] if search_result.backends_used else 'unknown',
+            'search_time': search_result.processing_time
+        })
     
     @login_required
     def get_search_history(self):

@@ -1,7 +1,12 @@
 from typing import List, Optional, Dict, Any
 from ..interfaces.search_interface import ISearchProvider
+from ..utils.exceptions import RateLimitError, APIUnavailableError, SearchError
+from ..utils.error_handler import ErrorHandler, handle_provider_error
 import requests
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CrossRefProvider(ISearchProvider):
     """CrossRef search provider implementation"""
@@ -12,65 +17,55 @@ class CrossRefProvider(ISearchProvider):
         self.base_url = "https://api.crossref.org/works"
         self.rate_limit_delay = 1.0  # Polite rate limiting
     
+    @handle_provider_error("CrossRef")
     def search(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search CrossRef for papers"""
         if not self.validate_query(query):
-            return []
+            raise SearchError(f"Invalid query: {query}", "Please enter a valid search query with at least 3 characters.")
 
-        try:
-            # Build search parameters with better filtering
-            params = {
-                'query': query.strip(),
-                'rows': min(limit * 2, 500),  # Get 2x results to filter out some
-                'sort': 'is-referenced-by-count',  # Sort by citation count for quality
-                'order': 'desc'
-            }
-            
-            # Add filters for better quality results
-            filters = []
-            
-            # Filter for journal articles only (exclude book chapters, etc.)
-            filters.append('type:journal-article')
-            
-            # Only include papers with abstracts (better quality indicator)
-            # Removing this filter as it's too restrictive
-            # filters.append('has-abstract:true')
-            
-            # Only include papers that have been cited at least once (quality filter)
-            # Making this less restrictive - allow papers with 0 citations if recent
-            # filters.append('is-referenced-by-count:>0')
-            
-            # Add year filters if specified
-            if min_year:
-                filters.append(f"from-pub-date:{min_year}")
-            if max_year:
-                filters.append(f"until-pub-date:{max_year}")
-            else:
-                # Default to papers from last 20 years for relevance
-                from datetime import datetime
-                current_year = datetime.now().year
-                filters.append(f"from-pub-date:{current_year - 20}")
-            
-            params['filter'] = ','.join(filters)
+        # Build search parameters with better filtering
+        params = {
+            'query': query.strip(),
+            'rows': min(limit * 2, 500),  # Get 2x results to filter out some
+            'sort': 'is-referenced-by-count',  # Sort by citation count for quality
+            'order': 'desc'
+        }
+        
+        # Add filters for better quality results
+        filters = []
+        
+        # Filter for journal articles only (exclude book chapters, etc.)
+        filters.append('type:journal-article')
+        
+        # Add year filters if specified
+        if min_year:
+            filters.append(f"from-pub-date:{min_year}")
+        if max_year:
+            filters.append(f"until-pub-date:{max_year}")
+        else:
+            # Default to papers from last 20 years for relevance
+            from datetime import datetime
+            current_year = datetime.now().year
+            filters.append(f"from-pub-date:{current_year - 20}")
+        
+        params['filter'] = ','.join(filters)
 
-            # Make request with rate limiting
-            response = self._make_request(params)
+        # Make request with rate limiting
+        response = self._make_request(params)
+        
+        if response and response.status_code == 200:
+            data = response.json()
+            papers = data.get('message', {}).get('items', [])
+            standardized = self._standardize_papers(papers)
             
-            if response and response.status_code == 200:
-                data = response.json()
-                papers = data.get('message', {}).get('items', [])
-                standardized = self._standardize_papers(papers)
-                
-                # Additional quality filtering after standardization
-                quality_papers = self._filter_quality_papers(standardized)
-                
-                # Return only the requested number of results
-                return quality_papers[:limit]
+            # Additional quality filtering after standardization
+            quality_papers = self._filter_quality_papers(standardized)
             
-            return []
-            
-        except Exception as e:
-            return []
+            # Return only the requested number of results
+            return quality_papers[:limit]
+        
+        # If we get here, something went wrong but didn't raise an exception
+        raise APIUnavailableError("CrossRef", message="No response received from CrossRef API")
     
     def get_provider_name(self) -> str:
         return "CrossRef"
@@ -109,7 +104,7 @@ class CrossRefProvider(ISearchProvider):
         return headers
     
     def _make_request(self, params: Dict[str, Any]) -> Optional[requests.Response]:
-        """Make request to CrossRef API with rate limiting"""
+        """Make request to CrossRef API with rate limiting and proper error handling"""
         max_retries = 3
         base_delay = 2
         
@@ -134,20 +129,38 @@ class CrossRefProvider(ISearchProvider):
                 if response.status_code == 200:
                     return response
                 elif response.status_code == 429:  # Rate limited
-                    retry_after = response.headers.get('Retry-After', '5')
-                    time.sleep(int(retry_after))
+                    retry_after = int(response.headers.get('Retry-After', '60'))
+                    logger.warning(f"CrossRef rate limited, waiting {retry_after} seconds")
+                    
+                    if attempt == max_retries - 1:
+                        # Last attempt, raise the error
+                        raise RateLimitError("CrossRef", retry_after)
+                    
+                    time.sleep(retry_after)
                     continue
-                elif response.status_code in [403, 404]:
-                    return None
+                elif response.status_code == 401:
+                    from ..utils.exceptions import AuthenticationError
+                    raise AuthenticationError("CrossRef", "API authentication failed")
+                elif response.status_code == 403:
+                    from ..utils.exceptions import AuthenticationError
+                    raise AuthenticationError("CrossRef", "Access forbidden - check API permissions")
+                elif response.status_code >= 500:
+                    if attempt == max_retries - 1:
+                        raise APIUnavailableError("CrossRef", response.status_code, "Server error")
+                    logger.warning(f"CrossRef server error {response.status_code}, retrying...")
+                    continue
                 else:
                     if attempt == max_retries - 1:
-                        return None
+                        raise APIUnavailableError("CrossRef", response.status_code, response.text[:200])
                     
             except requests.exceptions.RequestException as e:
+                logger.error(f"CrossRef request error (attempt {attempt + 1}): {e}")
                 if attempt == max_retries - 1:
-                    return None
+                    # Let the decorator handle this
+                    raise
         
-        return None
+        # Should not reach here due to exception handling above
+        raise APIUnavailableError("CrossRef", message="Max retries exceeded")
     
     def _standardize_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Standardize papers to match expected schema"""

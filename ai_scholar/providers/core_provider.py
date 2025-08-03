@@ -1,7 +1,12 @@
 from typing import List, Optional, Dict, Any
 from ..interfaces.search_interface import ISearchProvider
+from ..utils.exceptions import RateLimitError, APIUnavailableError, SearchError, AuthenticationError, NetworkError, TimeoutError
+from ..utils.error_handler import ErrorHandler, handle_provider_error
 import requests
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class COREProvider(ISearchProvider):
     """CORE (COnnecting REpositories) search provider implementation"""
@@ -15,10 +20,11 @@ class COREProvider(ISearchProvider):
         self.rate_limit_delay = 2.0  # Slower rate to avoid rate limits
         self.last_request_time = 0
     
+    @handle_provider_error("CORE")
     def search(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search CORE for papers"""
         if not self.validate_query(query):
-            return []
+            raise SearchError(f"Invalid query: {query}", "Please enter a valid search query with at least 3 characters.")
         
         # Quick rate limit check - if we just made a request, wait a bit
         current_time = time.time()
@@ -27,81 +33,93 @@ class COREProvider(ISearchProvider):
             time.sleep(1.0 - time_since_last)
         
         # Try v3 API first
-        results = self._search_v3(query, limit, min_year, max_year)
-        if results:
-            return results
+        try:
+            results = self._search_v3(query, limit, min_year, max_year)
+            if results:
+                return results
+        except RateLimitError:
+            # If v3 is rate limited, try v2
+            logger.info("CORE v3 rate limited, trying v2 API")
+        except APIUnavailableError as e:
+            # If v3 is unavailable, try v2
+            logger.info(f"CORE v3 unavailable ({e}), trying v2 API")
         
-        # Fallback to v2 API if v3 fails
+        # Fallback to v2 API
         return self._search_v2(query, limit, min_year, max_year)
     
     def _search_v3(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search using CORE v3 API"""
-        try:
-            # Build better search query
-            search_terms = query.strip()
+        # Build better search query
+        search_terms = query.strip()
+        
+        # Build search parameters with better filtering
+        params = {
+            'q': search_terms,
+            'limit': min(limit * 2, 100),  # Get more results to filter
+            'offset': 0,
+            'sort': 'relevance'
+        }
+        
+        # Add year filters if specified
+        if min_year or max_year:
+            year_filter = self._build_year_filter(min_year, max_year)
+            if year_filter:
+                params['q'] = f"{params['q']} AND {year_filter}"
+        else:
+            # Default to more recent papers for better quality
+            from datetime import datetime
+            current_year = datetime.now().year
+            recent_filter = self._build_year_filter(current_year - 15, None)  # Last 15 years
+            if recent_filter:
+                params['q'] = f"{params['q']} AND {recent_filter}"
+        
+        # Make request
+        response = self._make_request(self.search_url, params)
+        
+        if response and response.status_code == 200:
+            data = response.json()
+            papers = data.get('results', [])
+            if not papers:
+                logger.info(f"CORE v3 returned no results for query: {query}")
+                return []
             
-            # Build search parameters with better filtering
-            params = {
-                'q': search_terms,
-                'limit': min(limit * 2, 100),  # Get more results to filter
-                'offset': 0,
-                'sort': 'relevance'
-            }
+            standardized = self._standardize_papers_v3(papers)
             
-            # Add year filters if specified
-            if min_year or max_year:
-                year_filter = self._build_year_filter(min_year, max_year)
-                if year_filter:
-                    params['q'] = f"{params['q']} AND {year_filter}"
-            else:
-                # Default to more recent papers for better quality
-                from datetime import datetime
-                current_year = datetime.now().year
-                recent_filter = self._build_year_filter(current_year - 15, None)  # Last 15 years
-                if recent_filter:
-                    params['q'] = f"{params['q']} AND {recent_filter}"
+            # Apply quality filtering
+            quality_papers = self._filter_quality_papers(standardized)
             
-            # Make request
-            response = self._make_request(self.search_url, params)
-            
-            if response and response.status_code == 200:
-                data = response.json()
-                papers = data.get('results', [])
-                standardized = self._standardize_papers_v3(papers)
-                
-                # Apply quality filtering
-                quality_papers = self._filter_quality_papers(standardized)
-                
-                return quality_papers[:limit]
-            
-            return []
-            
-        except Exception as e:
-            return []
+            logger.info(f"CORE v3 found {len(quality_papers)} quality papers")
+            return quality_papers[:limit]
+        
+        logger.warning("CORE v3 API request failed or returned non-200 status")
+        raise APIUnavailableError("CORE", message="CORE v3 API request failed")
     
     def _search_v2(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search using CORE v2 API as fallback"""
-        try:
-            # Build search parameters for v2
-            params = {
-                'query': query.strip(),
-                'page': 1,
-                'pageSize': min(limit, 100),
-                'apiKey': self.api_key if self.api_key else ''
-            }
+        # Build search parameters for v2
+        params = {
+            'query': query.strip(),
+            'page': 1,
+            'pageSize': min(limit, 100),
+            'apiKey': self.api_key if self.api_key else ''
+        }
+        
+        # Make request to v2 endpoint
+        response = self._make_request(self.alt_search_url, params)
+        
+        if response and response.status_code == 200:
+            data = response.json()
+            papers = data.get('data', [])
+            if not papers:
+                logger.info(f"CORE v2 returned no results for query: {query}")
+                return []
             
-            # Make request to v2 endpoint
-            response = self._make_request(self.alt_search_url, params)
-            
-            if response and response.status_code == 200:
-                data = response.json()
-                papers = data.get('data', [])
-                return self._standardize_papers_v2(papers)
-            
-            return []
-            
-        except Exception as e:
-            return []
+            standardized = self._standardize_papers_v2(papers)
+            logger.info(f"CORE v2 found {len(standardized)} papers")
+            return standardized
+        
+        logger.warning("CORE v2 API request failed or returned non-200 status")
+        raise APIUnavailableError("CORE", message="CORE v2 API request failed")
     
     def get_provider_name(self) -> str:
         return "CORE"
@@ -198,31 +216,35 @@ class COREProvider(ISearchProvider):
                 if response.status_code == 200:
                     return response
                 elif response.status_code == 429:  # Rate limited
-                    retry_after = response.headers.get('Retry-After', '60')  # Default 60s
-                    retry_seconds = int(retry_after) if retry_after.isdigit() else 60
+                    retry_after = response.headers.get('Retry-After', '300')  # Default 5 minutes for CORE
+                    retry_seconds = int(retry_after) if retry_after.isdigit() else 300
                     
-                    # Don't wait too long - return None instead
-                    if retry_seconds > 30:  # Don't wait more than 30 seconds
-                        return None
+                    # Raise RateLimitError with proper retry time
+                    raise RateLimitError("CORE", retry_after_seconds=retry_seconds)
                         
-                    time.sleep(retry_seconds)
-                    continue
                 elif response.status_code in [401, 403]:
-                    return None
+                    raise AuthenticationError("CORE", "Invalid API key or insufficient permissions")
                 elif response.status_code == 500:
                     # Server error - might be temporary
                     if attempt == max_retries - 1:
-                        return None
+                        raise APIUnavailableError("CORE", "Server error (HTTP 500)")
                     continue
                 else:
                     if attempt == max_retries - 1:
-                        return None
+                        raise APIUnavailableError("CORE", f"HTTP {response.status_code}")
                     
+            except requests.exceptions.Timeout:
+                if attempt == max_retries - 1:
+                    raise TimeoutError("CORE", "Request timed out after 30 seconds")
+            except requests.exceptions.ConnectionError:
+                if attempt == max_retries - 1:
+                    raise NetworkError("CORE", "Connection failed")
             except requests.exceptions.RequestException as e:
                 if attempt == max_retries - 1:
-                    return None
+                    raise APIUnavailableError("CORE", f"Request failed: {str(e)}")
         
-        return None
+        # If we get here, all retries failed
+        raise APIUnavailableError("CORE", "All retry attempts failed")
     
     def _standardize_papers_v3(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Standardize papers to match expected schema"""

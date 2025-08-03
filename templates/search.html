@@ -132,8 +132,14 @@
                 <li>AI-powered ranking with multiple providers (Gemini, OpenRouter)</li>
                 <li>REST API endpoints available at <code>/search/api</code>, <code>/papers/aggregate</code></li>
                 <li>Backward compatibility maintained at <code>/legacy/</code></li>
+                <li><strong>NEW:</strong> Enhanced error handling with user-friendly messages for rate limits and service issues</li>
+                <li><strong>NEW:</strong> Automatic retry logic with intelligent wait times for different providers</li>
             </ul>
         </div>
     </div>
+    
+    <!-- Include jQuery and error handling -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/error_handler.js') }}"></script>
 </body>
 </html>

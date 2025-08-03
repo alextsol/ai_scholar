@@ -4,10 +4,20 @@ Utilities package - Shared utilities and helpers
 from .ai_utils import parse_ai_response, is_quota_error, create_paper_summary, create_description_summary
 from .helpers import _safe_int_conversion
 from .validators import validate_query, validate_year_range
-from .exceptions import AIScholarError, ConfigurationError, ProviderError
+from .exceptions import (
+    AIScholarError, ConfigurationError, ProviderError, RateLimitError,
+    APIUnavailableError, AuthenticationError, SearchError, ValidationError,
+    AIProcessingError, QuotaExceededError, NetworkError, TimeoutError,
+    CacheError, DataProcessingError, create_rate_limit_error, create_api_error
+)
+from .error_handler import ErrorHandler, handle_api_error, handle_provider_error
 
 __all__ = [
     "parse_ai_response", "is_quota_error", "create_paper_summary", "create_description_summary",
     "_safe_int_conversion", "validate_query", "validate_year_range",
-    "AIScholarError", "ConfigurationError", "ProviderError"
+    "AIScholarError", "ConfigurationError", "ProviderError", "RateLimitError",
+    "APIUnavailableError", "AuthenticationError", "SearchError", "ValidationError",
+    "AIProcessingError", "QuotaExceededError", "NetworkError", "TimeoutError",
+    "CacheError", "DataProcessingError", "create_rate_limit_error", "create_api_error",
+    "ErrorHandler", "handle_api_error", "handle_provider_error"
 ]

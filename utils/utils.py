@@ -11,15 +11,22 @@ def format_items(items, mapping):
     return [{ key: func(item) for key, func in mapping.items() } for item in items]
 
 def generic_requests_search(url, params, mapping, headers=None, extractor=None):
+    """Legacy function - deprecated in favor of provider-specific error handling"""
+    import warnings
+    warnings.warn("generic_requests_search is deprecated. Use provider-specific implementations with proper error handling.", DeprecationWarning)
+    
+    from ai_scholar.utils.exceptions import create_api_error
+    
     response = requests.get(url, params=params, headers=headers)
     if response.status_code == 429:
-        return "Error: Rate limit exceeded. Please try again later."
+        raise create_api_error("generic", 429, "Rate limit exceeded")
     elif response.status_code == 401:
-        return "Error: Authentication failed. Please check your API key."
+        raise create_api_error("generic", 401, "Authentication failed")
     elif response.status_code == 403:
-        return "Error: Access forbidden. Your API key may not have the required permissions."
+        raise create_api_error("generic", 403, "Access forbidden")
     elif response.status_code != 200:
-        return f"Error: Unable to fetch papers (Status Code: {response.status_code})"
+        raise create_api_error("generic", response.status_code, f"HTTP {response.status_code}")
+    
     data = extractor(response) if extractor else response.json()
     return format_items(data, mapping)
 
