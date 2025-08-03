@@ -1,239 +1,288 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scholar Search</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
+{% block title %}AI Scholar - Academic Paper Search{% endblock %}
 
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand" href="#">Scholar Search</a>
-      <div class="navbar-nav ms-auto">
-        {% if current_user.is_authenticated %}
-          <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
-          <a class="nav-link" href="{{ url_for('web_main.history') }}">History</a>
-          <a class="nav-link" href="{{ url_for('auth.profile') }}">Profile</a>
-          <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
-        {% else %}
-          <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
-          <a class="nav-link" href="{{ url_for('auth.register') }}">Register</a>
-        {% endif %}
-      </div>
-      <div class="form-check form-switch text-light">
-        <input class="form-check-input" type="checkbox" id="darkModeToggle">
-        <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
-      </div>
-    </div>
-  </nav>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
 
-  <!-- Loader Overlay -->
-  <div id="loader-overlay">
-    <div class="spinner-border text-light" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
+{% block body_class %}home-page{% endblock %}
 
-  <div class="container-fluid my-5" id="app">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
+{% block content %}
+<div class="home-container">
     <div class="row">
-      <div class="col-md-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="mb-0">Previous Searches</h5>
-          <button id="clearHistoryButton" class="btn btn-secondary btn-sm">Clear</button>
-        </div>
-        <ul id="searchHistoryTabs" class="list-group">
-          {% if recent_searches %}
-            {% for search in recent_searches %}
-              <li class="list-group-item d-flex justify-content-between align-items-center" 
-                  data-query="{{ search.query }}" 
-                  data-backend="{{ search.backend }}" 
-                  data-mode="{{ search.mode }}"
-                  data-search-id="{{ search.id }}">
-                <div class="flex-grow-1" style="cursor: pointer;">
-                  <strong>{{ search.query }}</strong>
-                  <br>
-                  <small class="text-muted">
-                    {{ search.backend }} • {{ search.created_at.strftime('%m/%d %H:%M') }}
-                    {% if search.results_count %}• {{ search.results_count }} results{% endif %}
-                  </small>
+        <!-- Search History Sidebar -->
+        <div class="col-lg-3">
+            <div class="search-history-section animate-on-scroll">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-history me-2"></i>Previous Searches</h5>
+                    <button id="clearHistoryButtonIndex" class="btn btn-outline-secondary clear-history-btn">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
                 </div>
-                <div class="d-flex align-items-center">
-                  <span class="badge bg-primary rounded-pill me-2">{{ search.mode }}</span>
-                  <button class="btn btn-outline-danger btn-sm delete-search-btn" 
-                          data-search-id="{{ search.id }}" 
-                          data-query="{{ search.query }}"
-                          title="Delete this search">
-                    ×
-                  </button>
+
+                <div id="searchHistoryTabs">
+                    {% if recent_searches %}
+                        {% for search in recent_searches %}
+                        <div class="search-history-item list-group-item" 
+                             data-query="{{ search.query }}" 
+                             data-backend="{{ search.backend }}" 
+                             data-mode="{{ search.mode }}"
+                             data-search-id="{{ search.id }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="query-text">{{ search.query }}</div>
+                                    <div class="search-meta">
+                                        <i class="fas fa-database me-1"></i>{{ search.backend }}
+                                        <span class="mx-1">•</span>
+                                        <i class="fas fa-clock me-1"></i>{{ search.created_at.strftime('%m/%d %H:%M') }}
+                                        {% if search.results_count %}
+                                        <span class="mx-1">•</span>
+                                        <i class="fas fa-file-alt me-1"></i>{{ search.results_count }} results
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="search-actions">
+                                    <span class="badge bg-primary me-2">{{ search.mode }}</span>
+                                    <button class="btn btn-outline-danger btn-sm delete-search-btn" 
+                                            data-search-id="{{ search.id }}" 
+                                            data-query="{{ search.query }}"
+                                            title="Delete this search">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-search fa-2x mb-3 opacity-50"></i>
+                            <p><em>No previous searches</em></p>
+                        </div>
+                    {% endif %}
                 </div>
-              </li>
-            {% endfor %}
-          {% else %}
-            <li class="list-group-item text-muted text-center">
-              <em>No previous searches</em>
-            </li>
-          {% endif %}
-        </ul>
-      </div>
-
-      <div class="col-md-9">
-        <form id="searchForm" method="post" class="mb-4">
-          <div class="input-group mb-3">
-            <input type="text" class="form-control" name="query" placeholder="Enter your search query"
-              value="{{ query }}" required>
-            <button class="btn btn-primary" type="submit">Search</button>
-          </div>
-          <div class="mb-3">
-            <label for="backend" class="form-label">Select Data Source (for regular search):</label>
-            <select name="backend" id="backend" class="form-select">
-              <option value="crossref" {% if selected_backend=='crossref' %}selected{% endif %}>CrossRef</option>
-              <option value="arxiv" {% if selected_backend=='arxiv' %}selected{% endif %}>arXiv</option>
-              <option value="semantic_scholar" {% if selected_backend=='semantic_scholar' %}selected{% endif %}>Semantic
-                Scholar</option>
-              <option value="core" {% if selected_backend=='core' %}selected{% endif %}>CORE</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Search Mode:</label>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="mode" id="modeRegular" value="regular" checked>
-              <label class="form-check-label" for="modeRegular">Regular Search</label>
             </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="mode" id="modeAggregate" value="aggregate">
-              <label class="form-check-label" for="modeAggregate">Aggregate Search</label>
-            </div>
-          </div>
-          <div class="mb-3" id="rankingModeGroup" {% if mode != 'aggregate' %}style="display:none"{% endif %}>
-            <label for="rankingMode" class="form-label">Ranking Mode:</label>
-            <select name="ranking_mode" id="rankingMode" class="form-select">
-              <option value="ai" {% if ranking_mode == 'ai' %}selected{% endif %}>AI Ranked</option>
-              <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="yearRange" class="form-label">Year Range:</label>
-            <div class="d-flex align-items-center gap-2">
-              <input type="number" class="form-control form-control-sm w-25" name="min_year" id="minYear"
-                placeholder="Min" value="{{ min_year }}">
-              <span class="mx-1">to</span>
-              <input type="number" class="form-control form-control-sm w-25" name="max_year" id="maxYear"
-                placeholder="Max" value="{{ max_year }}">
-            </div>
-          </div>
-          <div class="mb-3" id="resultLimitGroup" {% if mode !='regular' %}style="display:none" {% endif %}>
-            <label for="resultLimit" class="form-label">Number of Results:</label>
-            <input type="number" class="form-control form-control-sm w-25" name="result_limit" id="resultLimit"
-              placeholder="Default: 100" value="{{ result_limit }}">
-          </div>
-          <div class="mb-3" id="aiResultLimitGroup" {% if mode !='aggregate' %}style="display:none" {% endif %}>
-            <label for="aiResultLimit" class="form-label">Number of AI-Ranked Results:</label>
-            <input type="number" class="form-control form-control-sm w-25" name="ai_result_limit" id="aiResultLimit"
-              placeholder="Default: 10" value="{{ ai_result_limit }}">
-          </div>
-        </form>
-
-        <!-- Results section - always present -->
-        <div class="card" id="resultsSection" {% if not results %}style="display: none;"{% endif %}>
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-              Search Results for <strong id="queryDisplay">{{ query if query else "Previous Search" }}</strong>
-              <span class="badge bg-secondary ms-2" id="resultsCount">{{ papersCount if papersCount else 0 }} papers found</span>
-            </div>
-            <div class="d-flex align-items-center gap-2" id="sortControls">
-              <label for="sortBy" class="form-label mb-0 text-white">Sort by:</label>
-              <select id="sortBy" class="form-select form-select-sm" style="width: auto;">
-                <option value="default">Default Order</option>
-                <option value="citations-desc">Citations (High to Low)</option>
-                <option value="citations-asc">Citations (Low to High)</option>
-                <option value="year-desc">Year (Newest First)</option>
-                <option value="year-asc">Year (Oldest First)</option>
-                <option value="title-asc">Title (A-Z)</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="resultsContent" class="card-text">
-              {% if results %}
-                {% for source_result in results %}
-                  <h4>{{ source_result.source }} results:</h4>
-                  <ul>
-                    {% for paper in source_result.papers %}
-                      <li>
-                        <strong>{{ paper.title }}</strong> ({{ paper.year }})<br>
-                        <strong>Authors</strong>: {{ paper.authors }}<br>
-                        <strong>Citations</strong>: {{ paper.citations }}<br>
-                        <a href='{{ paper.url }}' target='_blank'>Read More</a>
-                        {% if paper.explanation %}
-                          <br><em>{{ paper.explanation }}</em>
-                        {% endif %}
-                      </li>
-                    {% endfor %}
-                  </ul>
-                {% endfor %}
-              {% else %}
-                <p class="text-muted">No results to display. Click on a previous search or perform a new search.</p>
-              {% endif %}
-            </div>
-          </div>
         </div>
-        
-        {% if query and not results %}
-        <div class="alert alert-warning text-center" role="alert">
-          No results found for your search query: <strong>{{ query }}</strong>.
+
+        <!-- Main Search Section -->
+        <div class="col-lg-9">
+            <div class="main-search-section animate-on-scroll">
+                <h3><i class="fas fa-search me-2"></i>Academic Paper Search</h3>
+                
+                <form id="searchForm" method="post" novalidate>
+                    <!-- Main Search Input -->
+                    <div class="search-input-group">
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="query" 
+                                   placeholder="Enter your search query (e.g., machine learning, climate change, quantum computing)"
+                                   value="{{ query }}" 
+                                   required
+                                   autocomplete="off">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search Options -->
+                    <div class="search-options">
+                        <!-- Data Source -->
+                        <div class="option-group">
+                            <label for="backend" class="form-label">
+                                <i class="fas fa-database me-2"></i>Data Source
+                            </label>
+                            <select name="backend" id="backend" class="form-select">
+                                <option value="crossref" {% if selected_backend=='crossref' %}selected{% endif %}>CrossRef</option>
+                                <option value="arxiv" {% if selected_backend=='arxiv' %}selected{% endif %}>arXiv</option>
+                                <option value="semantic_scholar" {% if selected_backend=='semantic_scholar' %}selected{% endif %}>Semantic Scholar</option>
+                                <option value="core" {% if selected_backend=='core' %}selected{% endif %}>CORE</option>
+                            </select>
+                        </div>
+
+                        <!-- Search Mode -->
+                        <div class="option-group">
+                            <label class="form-label">
+                                <i class="fas fa-sliders-h me-2"></i>Search Mode
+                            </label>
+                            <div class="mode-options">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="mode" id="modeRegular" value="regular" 
+                                           {% if mode != 'aggregate' %}checked{% endif %}>
+                                    <label class="form-check-label" for="modeRegular">
+                                        <strong>Regular Search</strong>
+                                        <small class="d-block text-muted">Search single provider</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="mode" id="modeAggregate" value="aggregate"
+                                           {% if mode == 'aggregate' %}checked{% endif %}>
+                                    <label class="form-check-label" for="modeAggregate">
+                                        <strong>Aggregate Search</strong>
+                                        <small class="d-block text-muted">AI-powered multi-provider search</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Year Range -->
+                        <div class="option-group">
+                            <label class="form-label">
+                                <i class="fas fa-calendar-alt me-2"></i>Year Range
+                            </label>
+                            <div class="year-range-inputs">
+                                <input type="number" 
+                                       class="form-control" 
+                                       name="min_year" 
+                                       id="minYear"
+                                       placeholder="Min year (e.g., 2020)" 
+                                       value="{{ min_year }}"
+                                       min="1900"
+                                       max="2030">
+                                <span>to</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       name="max_year" 
+                                       id="maxYear"
+                                       placeholder="Max year (e.g., 2024)" 
+                                       value="{{ max_year }}"
+                                       min="1900"
+                                       max="2030">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Form Groups -->
+                    <div class="search-options">
+                        <!-- AI Ranking Mode (for aggregate) -->
+                        <div class="option-group dynamic-group" id="rankingModeGroup" 
+                             {% if mode != 'aggregate' %}style="display:none"{% endif %}>
+                            <label for="rankingMode" class="form-label">
+                                <i class="fas fa-robot me-2"></i>AI Ranking Mode
+                            </label>
+                            <select name="ranking_mode" id="rankingMode" class="form-select">
+                                <option value="ai" {% if ranking_mode == 'ai' %}selected{% endif %}>AI Relevance Ranking</option>
+                                <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited First</option>
+                            </select>
+                        </div>
+
+                        <!-- Result Limit (for regular) -->
+                        <div class="option-group dynamic-group" id="resultLimitGroup" 
+                             {% if mode == 'aggregate' %}style="display:none"{% endif %}>
+                            <label for="resultLimit" class="form-label">
+                                <i class="fas fa-list-ol me-2"></i>Number of Results
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   name="result_limit" 
+                                   id="resultLimit"
+                                   placeholder="Default: 100" 
+                                   value="{{ result_limit }}"
+                                   min="1"
+                                   max="500">
+                        </div>
+
+                        <!-- AI Result Limit (for aggregate) -->
+                        <div class="option-group dynamic-group" id="aiResultLimitGroup" 
+                             {% if mode != 'aggregate' %}style="display:none"{% endif %}>
+                            <label for="aiResultLimit" class="form-label">
+                                <i class="fas fa-brain me-2"></i>AI-Ranked Results
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   name="ai_result_limit" 
+                                   id="aiResultLimit"
+                                   placeholder="Default: 10" 
+                                   value="{{ ai_result_limit }}"
+                                   min="1"
+                                   max="100">
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Quick Search Suggestions -->
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-lightbulb me-1"></i>Popular searches:
+                    </small>
+                    <div id="quickSearchContainer" class="mt-2">
+                        <!-- Quick search buttons will be added by JavaScript -->
+                    </div>
+                </div>
+            </div>
         </div>
-        {% endif %}
-      </div>
     </div>
-  </div>
 
-  <button id="backToTopButton" class="btn btn-primary"
-    style="position: fixed; bottom: 20px; right: 20px; display: none; z-index: 1000;">
-    ↑
-  </button>
+    <!-- Results Section -->
+    {% if results %}
+    <div class="results-section animate-on-scroll">
+        <div class="result-stats">
+            <h4><i class="fas fa-chart-bar me-2"></i>Search Results</h4>
+            <p>Found <strong>{{ papersCount }}</strong> academic papers matching your query</p>
+        </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="{{ url_for('static', filename='js/error_handler.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/darkmode.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/history.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/scrollToTop.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/results_toggle.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/ranking_mode.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/results_sorting.js') }}"></script>
+        <div class="result-grid">
+            {% for result_group in results %}
+            <div class="result-provider-section">
+                <h5 class="mb-3">
+                    <i class="fas fa-folder-open me-2"></i>
+                    {{ result_group['source'].title() }} 
+                    <span class="badge bg-secondary">{{ result_group['papers']|length }} papers</span>
+                </h5>
 
-  {% if results and query %}
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      setTimeout(function() {
-        window.currentQuery = "{{ query }}";
-        window.currentResultsHTML = document.getElementById('resultsContent').innerHTML;
-        window.currentSource = "{{ 'aggregate' if mode == 'aggregate' else selected_backend }}";
-        
-        if (window.addSearchHistory && window.currentQuery && window.currentResultsHTML) {
-          window.addSearchHistory(window.currentQuery, window.currentResultsHTML, window.currentSource);
-        }
-      }, 100);
-    });
-  </script>
-  {% endif %}
-</body>
+                <div class="row">
+                    {% for paper in result_group['papers'] %}
+                    <div class="col-lg-6 mb-3">
+                        <div class="result-card shadow-hover">
+                            <a href="{{ paper['url'] }}" target="_blank" rel="noopener" class="paper-title">
+                                {{ paper['title'] }}
+                                <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+                            </a>
+                            
+                            <div class="paper-meta">
+                                {% if paper['authors'] %}
+                                <div class="meta-item">
+                                    <i class="fas fa-users"></i>
+                                    <span>{{ paper['authors'] }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if paper['year'] %}
+                                <div class="meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>{{ paper['year'] }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if paper['citations'] %}
+                                <div class="meta-item">
+                                    <i class="fas fa-quote-right"></i>
+                                    <span>{{ paper['citations'] }} citations</span>
+                                </div>
+                                {% endif %}
+                            </div>
 
-</html>
+                            {% if paper['explanation'] %}
+                            <div class="ai-ranking">
+                                <span class="ranking-label">
+                                    <i class="fas fa-robot me-1"></i>AI Ranking:
+                                </span>
+                                {{ paper['explanation'] }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% endblock %}

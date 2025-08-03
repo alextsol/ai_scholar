@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   initDarkModeToggle("darkModeToggle");
 
-  const clearHistoryButton = document.getElementById("clearHistoryButton");
+  const clearHistoryButton = document.getElementById("clearHistoryButtonIndex");
   if (clearHistoryButton) {
     clearHistoryButton.addEventListener("click", () => {
       if (typeof clearSearchHistory !== "undefined") {

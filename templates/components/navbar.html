@@ -1,0 +1,49 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="{{ url_for('web_main.index') }}">
+            <i class="fas fa-graduation-cap me-2"></i>AI Scholar
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="navbar-nav ms-auto">
+                {% if current_user.is_authenticated %}
+                    <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
+                    <a class="nav-link" href="{{ url_for('web_main.index') }}">
+                        <i class="fas fa-home me-1"></i>Home
+                    </a>
+                    <a class="nav-link" href="{{ url_for('web_main.history') }}">
+                        <i class="fas fa-history me-1"></i>History
+                    </a>
+                    <a class="nav-link" href="{{ url_for('auth.profile') }}">
+                        <i class="fas fa-user me-1"></i>Profile
+                    </a>
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </a>
+                {% else %}
+                    <a class="nav-link" href="{{ url_for('web_main.index') }}">
+                        <i class="fas fa-home me-1"></i>Home
+                    </a>
+                    <a class="nav-link" href="{{ url_for('auth.login') }}">
+                        <i class="fas fa-sign-in-alt me-1"></i>Login
+                    </a>
+                    <a class="nav-link" href="{{ url_for('auth.register') }}">
+                        <i class="fas fa-user-plus me-1"></i>Register
+                    </a>
+                {% endif %}
+            </div>
+            
+            <!-- Dark Mode Toggle -->
+            <div class="form-check form-switch text-light ms-3">
+                <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                <label class="form-check-label" for="darkModeToggle">
+                    <i class="fas fa-moon"></i>
+                </label>
+            </div>
+        </div>
+    </div>
+</nav>

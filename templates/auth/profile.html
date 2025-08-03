@@ -1,82 +1,212 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Profile - Scholar Search</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
+{% block title %}Profile - AI Scholar{% endblock %}
 
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand" href="{{ url_for('web_main.index') }}">Scholar Search</a>
-      <div class="navbar-nav ms-auto">
-        <span class="navbar-text me-3">Welcome, {{ current_user.username }}!</span>
-        <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
-      </div>
-    </div>
-  </nav>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
 
-  <div class="container mt-5">
-    <div class="row">
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-header">
-            <h5>Profile Information</h5>
-          </div>
-          <div class="card-body">
-            <p><strong>Username:</strong> {{ current_user.username }}</p>
-            <p><strong>Email:</strong> {{ current_user.email }}</p>
-            <p><strong>Member since:</strong> {{ current_user.created_at.strftime('%B %d, %Y') }}</p>
-            <p><strong>Total searches:</strong> {{ searches|length }}</p>
-          </div>
+{% block content %}
+<div class="profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="profile-header-content">
+            <div class="profile-avatar">
+                <div class="avatar-placeholder">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+            <div class="profile-info">
+                <h1 class="profile-name">{{ current_user.username }}</h1>
+                <p class="profile-title">AI Scholar User</p>
+                <div class="profile-stats">
+                    <span class="stat-item">
+                        <i class="fas fa-search"></i>
+                        <span data-user-searches="{{ searches|length }}">{{ searches|length }} Searches</span>
+                    </span>
+                    <span class="stat-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Since {{ current_user.created_at.strftime('%B %Y') }}</span>
+                    </span>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button type="button" class="btn btn-primary" id="editProfileBtn">
+                    <i class="fas fa-edit"></i>
+                    Edit Profile
+                </button>
+            </div>
         </div>
-      </div>
-
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-header">
-            <h5>Recent Search History</h5>
-          </div>
-          <div class="card-body">
-            {% if searches %}
-              <div class="table-responsive">
-                <table class="table table-striped">
-                  <thead>
-                    <tr>
-                      <th>Query</th>
-                      <th>Backend</th>
-                      <th>Results</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for search in searches %}
-                      <tr>
-                        <td>{{ search.query }}</td>
-                        <td>
-                          <span class="badge bg-secondary">{{ search.backend }}</span>
-                        </td>
-                        <td>{{ search.results_count }}</td>
-                        <td>{{ search.created_at.strftime('%m/%d/%Y %H:%M') }}</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% else %}
-              <p class="text-muted">No search history yet. <a href="{{ url_for('web_main.index') }}">Start searching!</a></p>
-            {% endif %}
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    <!-- Profile Navigation -->
+    <div class="profile-nav">
+        <nav class="nav nav-pills nav-justified">
+            <a class="nav-link active" href="#" data-tab="profile">
+                <i class="fas fa-user me-2"></i>Profile Info
+            </a>
+            <a class="nav-link" href="#" data-tab="stats">
+                <i class="fas fa-chart-bar me-2"></i>Dashboard
+            </a>
+            <a class="nav-link" href="#" data-tab="settings">
+                <i class="fas fa-cog me-2"></i>Settings
+            </a>
+        </nav>
+    </div>
 
-</html>
+    <!-- Tab Content -->
+    <div class="profile-content">
+        <!-- Profile Info Tab -->
+        <div class="tab-pane fade show active" id="profile-tab">
+            <div class="profile-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-circle me-2"></i>
+                        Profile Information
+                    </h3>
+                </div>
+                
+                <div class="profile-info-grid">
+                    <div class="profile-info-card">
+                        <div class="info-group">
+                            <div class="field-group">
+                                <label class="field-label">
+                                    <i class="fas fa-user me-2"></i>Username
+                                </label>
+                                <div class="field-value">{{ current_user.username }}</div>
+                            </div>
+                            
+                            <div class="field-group">
+                                <label class="field-label">
+                                    <i class="fas fa-envelope me-2"></i>Email
+                                </label>
+                                <div class="field-value">{{ current_user.email }}</div>
+                            </div>
+                            
+                            <div class="field-group">
+                                <label class="field-label">
+                                    <i class="fas fa-calendar-alt me-2"></i>Member Since
+                                </label>
+                                <div class="field-value">{{ current_user.created_at.strftime('%B %d, %Y') }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-actions-card">
+                        <h4 class="actions-title">Account Actions</h4>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-outline-primary" id="changePasswordBtn">
+                                <i class="fas fa-key me-2"></i>Change Password
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="exportDataBtn">
+                                <i class="fas fa-download me-2"></i>Export Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats/Dashboard Tab -->
+        <div class="tab-pane fade" id="stats-tab">
+            <div class="profile-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Your Dashboard
+                    </h3>
+                    <p class="section-description">Overview of your search activity and platform usage</p>
+                </div>
+                
+                <div id="userStats" class="loading-placeholder">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading stats...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-pane fade" id="settings-tab">
+            <div class="profile-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-cog me-2"></i>
+                        Settings
+                    </h3>
+                    <p class="section-description">Customize your AI Scholar experience</p>
+                </div>
+                
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h4 class="settings-card-title">
+                                <i class="fas fa-palette me-2"></i>Appearance
+                            </h4>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label class="setting-label">Dark Mode</label>
+                                    <p class="setting-description">Toggle between light and dark themes</p>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="themeToggle">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h4 class="settings-card-title">
+                                <i class="fas fa-bell me-2"></i>Notifications
+                            </h4>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label class="setting-label">Browser Notifications</label>
+                                    <p class="setting-description">Get notified about search results and updates</p>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="notificationToggle">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h4 class="settings-card-title">
+                                <i class="fas fa-save me-2"></i>Data & Privacy
+                            </h4>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label class="setting-label">Auto-save Search History</label>
+                                    <p class="setting-description">Automatically save your searches for later reference</p>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="autoSaveToggle" checked>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+{% endblock %}

@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 from ..services.search_service import SearchService
 from ..services.paper_service import PaperService
 from ..models.search_request import SearchRequest
-from ..models.database import db, SearchHistory
+from ..models.database import db, SearchHistory, User
 from ..utils.exceptions import AIScholarError, RateLimitError, APIUnavailableError, ValidationError
 from ..utils.error_handler import ErrorHandler
 import logging
@@ -24,9 +24,13 @@ class WebController:
         """Register all web UI routes"""
         self.blueprint.add_url_rule('/', 'index', login_required(self.index), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
-        self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
-        self.blueprint.add_url_rule('/clear_history', 'clear_history', login_required(self.clear_history), methods=['POST'])
         self.blueprint.add_url_rule('/search', 'search_page', login_required(self.search_page), methods=['GET', 'POST'])
+        self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
+        
+        # History API endpoints (keep these for AJAX functionality)
+        self.blueprint.add_url_rule('/history/results/<int:search_id>', 'history_results', login_required(self.get_history_results), methods=['GET'])
+        self.blueprint.add_url_rule('/history/delete/<int:search_id>', 'history_delete', login_required(self.delete_history_item), methods=['POST'])
+        self.blueprint.add_url_rule('/history/clear', 'history_clear_api', login_required(self.clear_history_api), methods=['POST'])
     
     def index(self):
         """Main search interface"""
@@ -39,10 +43,15 @@ class WebController:
                 # Log error but don't fail the page load
                 pass
         
+        # Handle GET parameters for repeat search functionality
+        query_param = request.args.get('query', '').strip()
+        backend_param = request.args.get('backend', 'crossref')
+        mode_param = request.args.get('mode', '')
+        
         context = {
-            'query': '',
-            'selected_backend': 'crossref',
-            'mode': '',
+            'query': query_param,
+            'selected_backend': backend_param,
+            'mode': mode_param,
             'min_year': '',
             'max_year': '',
             'result_limit': 100,
@@ -167,38 +176,6 @@ class WebController:
         """Display search results (for AJAX requests)"""
         return jsonify({'message': 'Results endpoint'})
     
-    @login_required
-    def history(self):
-        """Display user's search history"""
-        try:
-            page = request.args.get('page', 1, type=int)
-            per_page = 20
-            
-            searches = SearchHistory.query.filter_by(user_id=current_user.id)\
-                                        .order_by(SearchHistory.created_at.desc())\
-                                        .paginate(page=page, per_page=per_page, error_out=False)
-            
-            return render_template('history.html', searches=searches)
-            
-        except Exception as e:
-            flash(f'Failed to load search history: {str(e)}', 'error')
-            return redirect(url_for('web_main.index'))
-    
-    def clear_history(self):
-        """Clear user's search history"""
-        try:
-            if current_user.is_authenticated:
-                SearchHistory.query.filter_by(user_id=current_user.id).delete()
-                db.session.commit()
-                flash('Search history cleared successfully!', 'success')
-            else:
-                flash('You must be logged in to clear history.', 'error')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Failed to clear search history: {str(e)}', 'error')
-        
-        return redirect(url_for('web_main.history'))
-    
     def search_page(self):
         """Dedicated search page with advanced options"""
         if request.method == 'POST':
@@ -213,10 +190,15 @@ class WebController:
                 # Log error but don't fail the page load
                 pass
         
+        # Get URL parameters for pre-filling form (e.g., from repeat search)
+        query_param = request.args.get('query', '')
+        backend_param = request.args.get('backend', 'crossref')
+        mode_param = request.args.get('mode', '')
+        
         context = {
-            'query': '',
-            'selected_backend': 'crossref',
-            'mode': '',
+            'query': query_param,
+            'selected_backend': backend_param,
+            'mode': mode_param,
             'min_year': '',
             'max_year': '',
             'result_limit': 100,
@@ -326,3 +308,136 @@ class WebController:
             db.session.rollback()
             # Silently handle history save errors to not disrupt user experience
             pass
+
+    def history(self):
+        """Search history page"""
+        try:
+            # Simple debug to check if method is called
+            print("HISTORY METHOD CALLED")
+            print(f"User authenticated: {current_user.is_authenticated}")
+            print(f"User ID: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
+            
+            # Get page number from request, default to 1
+            page = request.args.get('page', 1, type=int)
+            per_page = 12  # Number of searches per page
+            
+            # Get paginated searches for the current user, ordered by most recent
+            searches = db.session.query(SearchHistory).filter_by(
+                user_id=current_user.id
+            ).order_by(SearchHistory.created_at.desc()).paginate(
+                page=page, 
+                per_page=per_page, 
+                error_out=False
+            )
+            
+            print(f"Found {searches.total} searches for user {current_user.id}")
+            print(f"Items in current page: {len(searches.items)}")
+            
+            context = {
+                'searches': searches,
+                'searches_count': searches.total
+            }
+            
+            print("Rendering template...")
+            return render_template('history.html', **context)
+            
+        except Exception as e:
+            print(f"ERROR in history method: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('Unable to load search history. Please try again later.', 'error')
+            return redirect(url_for('web_main.index'))
+
+    def test_history(self):
+        """Test history page without authentication"""
+        try:
+            print("TEST HISTORY METHOD CALLED")
+            
+            # Get admin user (ID 2 based on our test)
+            admin_user = db.session.query(User).filter_by(username='admin').first()
+            if not admin_user:
+                return f"Admin user not found"
+            
+            print(f"Admin user found: ID {admin_user.id}")
+            
+            # Get paginated searches for admin user
+            searches = db.session.query(SearchHistory).filter_by(
+                user_id=admin_user.id
+            ).order_by(SearchHistory.created_at.desc()).paginate(
+                page=1, 
+                per_page=12, 
+                error_out=False
+            )
+            
+            print(f"Found {searches.total} searches for admin user")
+            print(f"Items in current page: {len(searches.items)}")
+            
+            if searches.items:
+                for i, search in enumerate(searches.items[:3]):
+                    print(f"Search {i}: '{search.query}' - {search.backend} - {search.created_at}")
+            
+            context = {
+                'searches': searches,
+                'searches_count': searches.total
+            }
+            
+            print("Rendering template...")
+            return render_template('history.html', **context)
+            
+        except Exception as e:
+            print(f"ERROR in test_history method: {e}")
+            import traceback
+            traceback.print_exc()
+            return f"Error: {e}"
+
+    def get_history_results(self, search_id: int):
+        """API endpoint to get stored results for a specific search"""
+        try:
+            search_record = db.session.query(SearchHistory).filter_by(
+                id=search_id, 
+                user_id=current_user.id
+            ).first()
+            
+            if not search_record:
+                return jsonify({'error': 'Search not found'}), 404
+            
+            return jsonify({
+                'query': search_record.query,
+                'results_count': search_record.results_count or 0,
+                'results_html': search_record.results_html or '<p>No stored results available</p>',
+                'search_date': search_record.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+            
+        except Exception as e:
+            return jsonify({'error': 'Failed to load results'}), 500
+
+    def delete_history_item(self, search_id: int):
+        """API endpoint to delete a specific search history item"""
+        try:
+            search_record = db.session.query(SearchHistory).filter_by(
+                id=search_id, 
+                user_id=current_user.id
+            ).first()
+            
+            if not search_record:
+                return jsonify({'success': False, 'error': 'Search not found'}), 404
+            
+            db.session.delete(search_record)
+            db.session.commit()
+            
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': 'Failed to delete search'}), 500
+
+    def clear_history_api(self):
+        """API endpoint to clear all search history"""
+        try:
+            db.session.query(SearchHistory).filter_by(user_id=current_user.id).delete()
+            db.session.commit()
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': 'Failed to clear history'}), 500
