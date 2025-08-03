@@ -107,14 +107,14 @@
             <h2>Search Results ({{ papersCount }} papers found)</h2>
             {% for result_group in results %}
             <div class="result-group">
-                <h3>{{ result_group.source.title() }} ({{ result_group.papers|length }} papers)</h3>
-                {% for paper in result_group.papers %}
+                <h3>{{ result_group['source'].title() }} ({{ result_group['papers']|length }} papers)</h3>
+                {% for paper in result_group['papers'] %}
                 <div class="result-item">
-                    <h4><a href="{{ paper.url }}" target="_blank">{{ paper.title }}</a></h4>
-                    <p><strong>Authors:</strong> {{ paper.authors }}</p>
-                    <p><strong>Year:</strong> {{ paper.year }} | <strong>Citations:</strong> {{ paper.citations }}</p>
-                    {% if paper.explanation %}
-                    <p><strong>AI Ranking:</strong> {{ paper.explanation }}</p>
+                    <h4><a href="{{ paper['url'] }}" target="_blank">{{ paper['title'] }}</a></h4>
+                    <p><strong>Authors:</strong> {{ paper['authors'] }}</p>
+                    <p><strong>Year:</strong> {{ paper['year'] }} | <strong>Citations:</strong> {{ paper['citations'] }}</p>
+                    {% if paper['explanation'] %}
+                    <p><strong>AI Ranking:</strong> {{ paper['explanation'] }}</p>
                     {% endif %}
                 </div>
                 {% endfor %}

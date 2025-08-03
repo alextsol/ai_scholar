@@ -17,14 +17,23 @@ class WebController:
     
     def _register_routes(self):
         """Register all web UI routes"""
-        self.blueprint.add_url_rule('/', 'index', self.index, methods=['GET', 'POST'])
+        self.blueprint.add_url_rule('/', 'index', login_required(self.index), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
         self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
         self.blueprint.add_url_rule('/clear_history', 'clear_history', login_required(self.clear_history), methods=['POST'])
-        self.blueprint.add_url_rule('/search', 'search_page', self.search_page, methods=['GET', 'POST'])
+        self.blueprint.add_url_rule('/search', 'search_page', login_required(self.search_page), methods=['GET', 'POST'])
     
     def index(self):
         """Main search interface"""
+        # Get recent searches for authenticated user
+        recent_searches = []
+        if current_user.is_authenticated:
+            try:
+                recent_searches = current_user.get_recent_searches(limit=10)
+            except Exception as e:
+                # Log error but don't fail the page load
+                pass
+        
         context = {
             'query': '',
             'selected_backend': '',
@@ -36,7 +45,7 @@ class WebController:
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
-            'recent_searches': []
+            'recent_searches': recent_searches
         }
         
         if request.method == 'POST':
@@ -84,6 +93,10 @@ class WebController:
                     )
                     search_result = self.search_service.search_papers(search_request)
                 
+                # Always save search history regardless of results
+                results_count = len(search_result.papers) if search_result and search_result.papers else 0
+                results_for_history = []
+                
                 if search_result and search_result.papers:
                     backend_used = (search_result.backends_used[0] if search_result.backends_used else "Unknown")
                     
@@ -110,17 +123,21 @@ class WebController:
                         papers_as_dicts, 
                         default_source=selected_backend or backend_used
                     )
+                    
                     context['results'] = results
                     context['papersCount'] = len(search_result.papers)
-                    
-                    self._save_web_search_history(
-                        query, selected_backend or mode, mode, 
-                        result_limit, ai_result_limit, ranking_mode,
-                        min_year, max_year, len(search_result.papers),
-                        results
-                    )
+                    results_for_history = results
                 else:
                     flash('No results found for your query', 'info')
+                    backend_used = selected_backend or 'Unknown'
+                
+                # Save search history (moved outside the results check)
+                self._save_web_search_history(
+                    query, selected_backend or mode, mode, 
+                    result_limit, ai_result_limit, ranking_mode,
+                    min_year, max_year, results_count,
+                    results_for_history
+                )
                     
             except Exception as e:
                 flash(f'Search failed: {str(e)}', 'error')
@@ -168,6 +185,15 @@ class WebController:
         if request.method == 'POST':
             return self.index()
         
+        # Get recent searches for authenticated user
+        recent_searches = []
+        if current_user.is_authenticated:
+            try:
+                recent_searches = current_user.get_recent_searches(limit=10)
+            except Exception as e:
+                # Log error but don't fail the page load
+                pass
+        
         context = {
             'query': '',
             'selected_backend': '',
@@ -179,7 +205,7 @@ class WebController:
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
-            'recent_searches': [],
+            'recent_searches': recent_searches,
             'available_backends': ['arxiv', 'semantic_scholar', 'crossref', 'core'],
             'advanced_mode': True
         }
@@ -232,6 +258,9 @@ class WebController:
                                 results_count: int, results: List[Dict[str, Any]]):
         """Save web search to history"""
         try:
+            # Check if user is authenticated
+            if not current_user.is_authenticated:
+                return
             search_params = {
                 'min_year': min_year,
                 'max_year': max_year,
@@ -276,3 +305,5 @@ class WebController:
             
         except Exception as e:
             db.session.rollback()
+            # Silently handle history save errors to not disrupt user experience
+            pass
