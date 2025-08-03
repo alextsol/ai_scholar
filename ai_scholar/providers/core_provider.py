@@ -10,18 +10,40 @@ class COREProvider(ISearchProvider):
         self.api_key = api_key
         self.base_url = "https://api.core.ac.uk/v3"
         self.search_url = f"{self.base_url}/search/works"
-        self.rate_limit_delay = 1.0
+        # Try alternative endpoints if main fails
+        self.alt_search_url = "https://core.ac.uk/api-v2/articles/search"  # v2 fallback
+        self.rate_limit_delay = 2.0  # Slower rate to avoid rate limits
+        self.last_request_time = 0
     
     def search(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search CORE for papers"""
         if not self.validate_query(query):
             return []
         
+        # Quick rate limit check - if we just made a request, wait a bit
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < 1.0:
+            time.sleep(1.0 - time_since_last)
+        
+        # Try v3 API first
+        results = self._search_v3(query, limit, min_year, max_year)
+        if results:
+            return results
+        
+        # Fallback to v2 API if v3 fails
+        return self._search_v2(query, limit, min_year, max_year)
+    
+    def _search_v3(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Search using CORE v3 API"""
         try:
-            # Build search parameters
+            # Build better search query
+            search_terms = query.strip()
+            
+            # Build search parameters with better filtering
             params = {
-                'q': query.strip(),
-                'limit': min(limit, 100),  # CORE API limit
+                'q': search_terms,
+                'limit': min(limit * 2, 100),  # Get more results to filter
                 'offset': 0,
                 'sort': 'relevance'
             }
@@ -31,14 +53,50 @@ class COREProvider(ISearchProvider):
                 year_filter = self._build_year_filter(min_year, max_year)
                 if year_filter:
                     params['q'] = f"{params['q']} AND {year_filter}"
+            else:
+                # Default to more recent papers for better quality
+                from datetime import datetime
+                current_year = datetime.now().year
+                recent_filter = self._build_year_filter(current_year - 15, None)  # Last 15 years
+                if recent_filter:
+                    params['q'] = f"{params['q']} AND {recent_filter}"
             
             # Make request
-            response = self._make_request(params)
+            response = self._make_request(self.search_url, params)
             
             if response and response.status_code == 200:
                 data = response.json()
                 papers = data.get('results', [])
-                return self._standardize_papers(papers)
+                standardized = self._standardize_papers_v3(papers)
+                
+                # Apply quality filtering
+                quality_papers = self._filter_quality_papers(standardized)
+                
+                return quality_papers[:limit]
+            
+            return []
+            
+        except Exception as e:
+            return []
+    
+    def _search_v2(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Search using CORE v2 API as fallback"""
+        try:
+            # Build search parameters for v2
+            params = {
+                'query': query.strip(),
+                'page': 1,
+                'pageSize': min(limit, 100),
+                'apiKey': self.api_key if self.api_key else ''
+            }
+            
+            # Make request to v2 endpoint
+            response = self._make_request(self.alt_search_url, params)
+            
+            if response and response.status_code == 200:
+                data = response.json()
+                papers = data.get('data', [])
+                return self._standardize_papers_v2(papers)
             
             return []
             
@@ -52,13 +110,31 @@ class COREProvider(ISearchProvider):
         """Check if CORE API is available"""
         try:
             headers = self._get_headers()
+            
+            # Try main v3 API
             test_response = requests.get(
                 self.search_url,
                 params={'q': 'test', 'limit': 1},
                 headers=headers,
-                timeout=10
+                timeout=15
             )
-            return test_response.status_code in [200, 401]  # 401 means API key required but service available
+            
+            # Consider 200, 401 (needs auth), and even 500 (service exists but has issues) as "available"
+            if test_response.status_code in [200, 401]:
+                return True
+            
+            # If v3 fails, try v2 API as fallback
+            if hasattr(self, 'alt_search_url'):
+                alt_response = requests.get(
+                    self.alt_search_url,
+                    params={'query': 'test', 'page': 1, 'pageSize': 1},
+                    headers=headers,
+                    timeout=15
+                )
+                return alt_response.status_code in [200, 401]
+            
+            return False
+            
         except:
             return False
     
@@ -90,39 +166,54 @@ class COREProvider(ISearchProvider):
             return f"yearPublished:[* TO {max_year}]"
         return ""
     
-    def _make_request(self, params: Dict[str, Any]) -> Optional[requests.Response]:
-        """Make request to CORE API with rate limiting"""
-        max_retries = 3
-        base_delay = 2
+    def _make_request(self, url: str, params: Dict[str, Any]) -> Optional[requests.Response]:
+        """Make request to CORE API with better rate limiting"""
+        max_retries = 2  # Reduced retries to avoid long waits
+        base_delay = 3    # Longer base delay
         
         for attempt in range(max_retries):
             try:
-                # Rate limiting delay
+                # Better rate limiting - ensure minimum time between requests
+                current_time = time.time()
+                time_since_last = current_time - self.last_request_time
+                if time_since_last < self.rate_limit_delay:
+                    time.sleep(self.rate_limit_delay - time_since_last)
+                
+                # Additional delay for retries
                 if attempt > 0:
                     delay = base_delay * (2 ** attempt)
                     time.sleep(delay)
-                else:
-                    time.sleep(self.rate_limit_delay)
                 
                 headers = self._get_headers()
                 
                 response = requests.get(
-                    self.search_url,
+                    url,
                     params=params,
                     headers=headers,
                     timeout=30
                 )
                 
+                self.last_request_time = time.time()
+                
                 if response.status_code == 200:
                     return response
                 elif response.status_code == 429:  # Rate limited
-                    retry_after = response.headers.get('Retry-After', '5')
-                    time.sleep(int(retry_after))
+                    retry_after = response.headers.get('Retry-After', '60')  # Default 60s
+                    retry_seconds = int(retry_after) if retry_after.isdigit() else 60
+                    
+                    # Don't wait too long - return None instead
+                    if retry_seconds > 30:  # Don't wait more than 30 seconds
+                        return None
+                        
+                    time.sleep(retry_seconds)
                     continue
-                elif response.status_code == 401:
+                elif response.status_code in [401, 403]:
                     return None
-                elif response.status_code == 403:
-                    return None
+                elif response.status_code == 500:
+                    # Server error - might be temporary
+                    if attempt == max_retries - 1:
+                        return None
+                    continue
                 else:
                     if attempt == max_retries - 1:
                         return None
@@ -133,7 +224,7 @@ class COREProvider(ISearchProvider):
         
         return None
     
-    def _standardize_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _standardize_papers_v3(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Standardize papers to match expected schema"""
         standardized = []
         
@@ -184,7 +275,11 @@ class COREProvider(ISearchProvider):
                     url = f"https://doi.org/{doi}"
                 
                 # Handle citations (not typically available in CORE)
+                # CORE doesn't provide citation counts, so we'll use 'N/A' or estimate based on age
                 citation_count = paper.get('citationCount', 'N/A')
+                if citation_count == 'N/A' or citation_count == 0:
+                    # For display purposes, indicate that citation data is not available
+                    citation_count = 'N/A'
                 
                 # Handle repository/publisher info
                 repositories = paper.get('repositories', [])
@@ -218,6 +313,59 @@ class COREProvider(ISearchProvider):
         
         return standardized
     
+    def _filter_quality_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter papers for better quality"""
+        quality_papers = []
+        
+        for paper in papers:
+            # Skip papers without proper titles
+            title = paper.get('title', '').strip()
+            if not title or len(title) < 10:
+                continue
+                
+            # Skip papers without authors
+            authors = paper.get('authors', '')
+            if not authors or authors == 'Unknown':
+                continue
+            
+            # Skip papers without abstracts (usually lower quality)
+            abstract = paper.get('abstract', '').strip()
+            if not abstract or len(abstract) < 50:
+                continue
+            
+            # Prefer papers with DOIs (usually higher quality)
+            doi = paper.get('doi', '')
+            has_doi = bool(doi)
+            
+            # Prefer papers with URLs (accessible)
+            url = paper.get('url', '')
+            has_url = bool(url)
+            
+            # Skip if no DOI and no URL
+            if not has_doi and not has_url:
+                continue
+                
+            # Add quality score for sorting
+            quality_score = 0
+            if has_doi:
+                quality_score += 2
+            if has_url:
+                quality_score += 1
+            if len(abstract) > 200:
+                quality_score += 1
+                
+            paper['_quality_score'] = quality_score
+            quality_papers.append(paper)
+        
+        # Sort by quality score and return
+        quality_papers.sort(key=lambda p: p.get('_quality_score', 0), reverse=True)
+        
+        # Remove the quality score field
+        for paper in quality_papers:
+            paper.pop('_quality_score', None)
+            
+        return quality_papers
+
     def get_paper_by_core_id(self, core_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific paper by CORE ID"""
         if not core_id:
@@ -233,9 +381,98 @@ class COREProvider(ISearchProvider):
             if response.status_code == 200:
                 paper_data = response.json()
                 if paper_data:
-                    return self._standardize_papers([paper_data])[0]
+                    return self._standardize_papers_v3([paper_data])[0]
             
         except Exception as e:
             pass
         
         return None
+
+    def _standardize_papers_v2(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Standardize papers from CORE v2 API to match expected schema"""
+        standardized = []
+        
+        for paper in papers:
+            try:
+                # Handle title
+                title = paper.get('title', 'No title')
+                
+                # Handle authors (v2 format is different)
+                authors_list = paper.get('authors', [])
+                if isinstance(authors_list, list):
+                    # In v2, authors might be strings or objects
+                    author_names = []
+                    for author in authors_list:
+                        if isinstance(author, str):
+                            author_names.append(author)
+                        elif isinstance(author, dict):
+                            name = author.get('name', '') or f"{author.get('firstname', '')} {author.get('surname', '')}".strip()
+                            if name:
+                                author_names.append(name)
+                    authors_str = ', '.join(author_names) if author_names else 'Unknown'
+                else:
+                    authors_str = str(authors_list) if authors_list else 'Unknown'
+                
+                # Handle year
+                year = paper.get('year', 'Unknown')
+                if not year:
+                    # Try to extract from datePublished
+                    date_pub = paper.get('datePublished')
+                    if date_pub:
+                        try:
+                            year = int(date_pub.split('-')[0])
+                        except:
+                            year = 'Unknown'
+                
+                # Handle abstract
+                abstract = paper.get('description', '') or paper.get('abstract', '')
+                
+                # Handle URLs - v2 API structure
+                download_url = paper.get('downloadUrl', '')
+                fulltext_urls = paper.get('fulltextUrls', [])
+                pdf_url = fulltext_urls[0] if fulltext_urls else ''
+                url = download_url or pdf_url or ''
+                
+                # Handle DOI
+                doi = paper.get('doi', '') or paper.get('identifiers', {}).get('doi', '')
+                if doi and not url:
+                    url = f"https://doi.org/{doi}"
+                
+                # Handle citations - v2 might have citedBy info
+                citation_count = paper.get('citedBy', 'N/A')
+                if isinstance(citation_count, list):
+                    citation_count = len(citation_count)
+                elif citation_count == 'N/A' or citation_count == 0:
+                    citation_count = 'N/A'
+                
+                # Handle repository info
+                repositories = paper.get('repositories', [])
+                repository_name = repositories[0].get('name', '') if repositories else ''
+                
+                standardized_paper = {
+                    'title': title,
+                    'authors': authors_str,
+                    'year': year,
+                    'abstract': abstract,
+                    'url': url,
+                    'citations': citation_count,
+                    'source': 'core',
+                    'provider': self.get_provider_name(),
+                    'doi': doi,
+                    'repository': repository_name,
+                    'language': paper.get('language', ''),
+                    'subjects': paper.get('subjects', []),
+                    'publisher': paper.get('publisher', ''),
+                    'journal': paper.get('journal', ''),
+                    'oai_id': paper.get('oai', ''),
+                    'core_id': paper.get('id', ''),
+                    'published_date': paper.get('datePublished', ''),
+                    'deposited_date': paper.get('depositedDate', '')
+                }
+                
+                standardized.append(standardized_paper)
+                
+            except Exception as e:
+                continue
+        
+        return standardized

@@ -49,9 +49,9 @@
                         <label for="backend">Search Provider:</label>
                         <select id="backend" name="backend">
                             <option value="">All Providers</option>
+                            <option value="crossref" {% if selected_backend == 'crossref' %}selected{% endif %}>CrossRef</option>
                             <option value="arxiv" {% if selected_backend == 'arxiv' %}selected{% endif %}>arXiv</option>
                             <option value="semantic_scholar" {% if selected_backend == 'semantic_scholar' %}selected{% endif %}>Semantic Scholar</option>
-                            <option value="crossref" {% if selected_backend == 'crossref' %}selected{% endif %}>CrossRef</option>
                             <option value="core" {% if selected_backend == 'core' %}selected{% endif %}>CORE</option>
                         </select>
                     </div>
@@ -128,7 +128,7 @@
             <ul>
                 <li>Professional MVC architecture with controllers, services, and providers</li>
                 <li>Interface-driven design with dependency injection</li>
-                <li>Multiple search providers: arXiv, Semantic Scholar, CrossRef, CORE</li>
+                <li>Multiple search providers: CrossRef, arXiv, Semantic Scholar, CORE</li>
                 <li>AI-powered ranking with multiple providers (Gemini, OpenRouter)</li>
                 <li>REST API endpoints available at <code>/search/api</code>, <code>/papers/aggregate</code></li>
                 <li>Backward compatibility maintained at <code>/legacy/</code></li>

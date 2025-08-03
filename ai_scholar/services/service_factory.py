@@ -33,7 +33,7 @@ class ServiceFactory:
         search_providers = provider_registry.get_all_search_providers()
         
         if search_providers:
-            default_backend = 'semantic_scholar' if 'semantic_scholar' in search_providers else list(search_providers.keys())[0]
+            default_backend = 'crossref' if 'crossref' in search_providers else list(search_providers.keys())[0]
             self.services['search'] = SearchService(search_providers, default_backend)
     
     def _create_ai_service(self) -> None:

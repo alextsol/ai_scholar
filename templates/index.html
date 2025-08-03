@@ -101,10 +101,10 @@
           <div class="mb-3">
             <label for="backend" class="form-label">Select Data Source (for regular search):</label>
             <select name="backend" id="backend" class="form-select">
+              <option value="crossref" {% if selected_backend=='crossref' %}selected{% endif %}>CrossRef</option>
+              <option value="arxiv" {% if selected_backend=='arxiv' %}selected{% endif %}>arXiv</option>
               <option value="semantic_scholar" {% if selected_backend=='semantic_scholar' %}selected{% endif %}>Semantic
                 Scholar</option>
-              <option value="arxiv" {% if selected_backend=='arxiv' %}selected{% endif %}>arXiv</option>
-              <option value="crossref" {% if selected_backend=='crossref' %}selected{% endif %}>CrossRef</option>
               <option value="core" {% if selected_backend=='core' %}selected{% endif %}>CORE</option>
             </select>
           </div>

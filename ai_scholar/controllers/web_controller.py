@@ -36,7 +36,7 @@ class WebController:
         
         context = {
             'query': '',
-            'selected_backend': '',
+            'selected_backend': 'crossref',
             'mode': '',
             'min_year': '',
             'max_year': '',
@@ -196,7 +196,7 @@ class WebController:
         
         context = {
             'query': '',
-            'selected_backend': '',
+            'selected_backend': 'crossref',
             'mode': '',
             'min_year': '',
             'max_year': '',
@@ -206,7 +206,7 @@ class WebController:
             'results': [],
             'papersCount': 0,
             'recent_searches': recent_searches,
-            'available_backends': ['arxiv', 'semantic_scholar', 'crossref', 'core'],
+            'available_backends': ['crossref', 'arxiv', 'semantic_scholar', 'core'],
             'advanced_mode': True
         }
         

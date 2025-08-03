@@ -35,7 +35,7 @@ class ProvidersConfig:
         CORE_API_URL = os.getenv("CORE_API_URL", "https://api.core.ac.uk/v3/search/works")
         CORE_API_KEY = os.getenv("CORE_API_KEY")
         
-        DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "semantic_scholar")
+        DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "crossref")
     
     @classmethod 
     def validate_ai_config(cls):

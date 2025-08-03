@@ -12,7 +12,7 @@ import random
 class SearchService:
     """Service for handling paper search operations"""
     
-    def __init__(self, search_providers: Dict[str, ISearchProvider], default_backend: str = 'semantic_scholar'):
+    def __init__(self, search_providers: Dict[str, ISearchProvider], default_backend: str = 'crossref'):
         self.search_providers = search_providers
         self.default_backend = default_backend
     

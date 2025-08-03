@@ -16,32 +16,56 @@ class CrossRefProvider(ISearchProvider):
         """Search CrossRef for papers"""
         if not self.validate_query(query):
             return []
-        
+
         try:
-            # Build search parameters
+            # Build search parameters with better filtering
             params = {
                 'query': query.strip(),
-                'rows': min(limit, 1000),  # CrossRef allows up to 1000
-                'sort': 'relevance',
+                'rows': min(limit * 2, 500),  # Get 2x results to filter out some
+                'sort': 'is-referenced-by-count',  # Sort by citation count for quality
                 'order': 'desc'
             }
             
-            # Add year filters if specified
-            if min_year or max_year:
-                filters = []
-                if min_year:
-                    filters.append(f"from-pub-date:{min_year}")
-                if max_year:
-                    filters.append(f"until-pub-date:{max_year}")
-                params['filter'] = ','.join(filters)
+            # Add filters for better quality results
+            filters = []
             
+            # Filter for journal articles only (exclude book chapters, etc.)
+            filters.append('type:journal-article')
+            
+            # Only include papers with abstracts (better quality indicator)
+            # Removing this filter as it's too restrictive
+            # filters.append('has-abstract:true')
+            
+            # Only include papers that have been cited at least once (quality filter)
+            # Making this less restrictive - allow papers with 0 citations if recent
+            # filters.append('is-referenced-by-count:>0')
+            
+            # Add year filters if specified
+            if min_year:
+                filters.append(f"from-pub-date:{min_year}")
+            if max_year:
+                filters.append(f"until-pub-date:{max_year}")
+            else:
+                # Default to papers from last 20 years for relevance
+                from datetime import datetime
+                current_year = datetime.now().year
+                filters.append(f"from-pub-date:{current_year - 20}")
+            
+            params['filter'] = ','.join(filters)
+
             # Make request with rate limiting
             response = self._make_request(params)
             
             if response and response.status_code == 200:
                 data = response.json()
                 papers = data.get('message', {}).get('items', [])
-                return self._standardize_papers(papers)
+                standardized = self._standardize_papers(papers)
+                
+                # Additional quality filtering after standardization
+                quality_papers = self._filter_quality_papers(standardized)
+                
+                # Return only the requested number of results
+                return quality_papers[:limit]
             
             return []
             
@@ -163,10 +187,24 @@ class CrossRefProvider(ISearchProvider):
                 url = f"https://doi.org/{doi}" if doi else paper.get('URL', '')
                 
                 # Handle citations (referenced-by-count)
-                citation_count = paper.get('is-referenced-by-count', 'N/A')
+                citation_count = paper.get('is-referenced-by-count', 0)
+                # Ensure citation count is a proper integer or 'N/A'
+                if citation_count is None or citation_count == 0:
+                    citation_count = 0
+                elif not isinstance(citation_count, int):
+                    try:
+                        citation_count = int(citation_count)
+                    except (ValueError, TypeError):
+                        citation_count = 0
                 
-                # Handle abstract (not usually available in CrossRef)
+                # Handle abstract (clean HTML if present)
                 abstract = paper.get('abstract', '')
+                if abstract:
+                    # Remove HTML tags and clean up
+                    import re
+                    abstract = re.sub('<[^<]+?>', '', abstract)  # Remove HTML tags
+                    abstract = abstract.replace('&nbsp;', ' ').replace('&amp;', '&')  # Clean entities
+                    abstract = ' '.join(abstract.split())  # Normalize whitespace
                 
                 # Handle journal/venue
                 container_title = paper.get('container-title', [])
@@ -218,3 +256,63 @@ class CrossRefProvider(ISearchProvider):
             pass
         
         return None
+
+    def _filter_quality_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Additional quality filtering for papers"""
+        quality_papers = []
+        
+        for paper in papers:
+            # Skip papers with generic titles
+            title = paper.get('title', '').lower()
+            if self._is_generic_title(title):
+                continue
+            
+            # Skip papers without proper authors (but be less strict)
+            authors = paper.get('authors', '')
+            if not authors or authors == 'Unknown':
+                continue
+            
+            # Less restrictive citation filtering
+            citations = paper.get('citations', 0)
+            year = paper.get('year', 0)
+            
+            # Skip papers that clearly have no citation data AND are old
+            if citations == 'N/A' and isinstance(year, int) and year < 2020:
+                continue
+            
+            # More lenient venue filtering - just check it exists
+            venue = paper.get('venue', '')
+            # Commenting out venue requirement as it may be too restrictive
+            # if not venue or len(venue.strip()) < 3:
+            #     continue
+            
+            quality_papers.append(paper)
+        
+        return quality_papers
+    
+    def _is_generic_title(self, title: str) -> bool:
+        """Check if title is too generic/vague"""
+        generic_patterns = [
+            'machine learning',
+            'artificial intelligence', 
+            'deep learning',
+            'neural networks',
+            'data mining',
+            'introduction to',
+            'overview of',
+            'survey of',
+            'review of'
+        ]
+        
+        # If title is exactly one of these generic terms, it's too generic
+        title_clean = title.strip().lower()
+        if title_clean in generic_patterns:
+            return True
+        
+        # If title is very short and contains only generic terms
+        if len(title_clean.split()) <= 3:
+            for pattern in generic_patterns:
+                if pattern in title_clean and len(title_clean.replace(pattern, '').strip()) < 5:
+                    return True
+        
+        return False
