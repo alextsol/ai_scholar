@@ -5,7 +5,6 @@
 
 class HistoryPage {
     constructor() {
-        this.currentView = 'list';
         this.currentFilter = 'all';
         this.currentTimeFilter = 7; // days
         this.searchTerm = '';
@@ -13,49 +12,11 @@ class HistoryPage {
     }
 
     init() {
-        this.setupViewToggle();
         this.setupFilters();
         this.setupSearch();
         this.setupHistoryActions();
         this.setupTimeFilters();
         this.applyInitialFilters();
-    }
-
-    /**
-     * View Toggle (List vs Grid)
-     */
-    setupViewToggle() {
-        const viewButtons = document.querySelectorAll('.view-btn');
-        const listView = document.getElementById('historyList');
-        const gridView = document.getElementById('historyGrid');
-
-        viewButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const view = btn.dataset.view;
-                this.switchView(view, viewButtons, listView, gridView);
-            });
-        });
-    }
-
-    switchView(view, buttons, listView, gridView) {
-        this.currentView = view;
-
-        // Update button states
-        buttons.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === view);
-        });
-
-        // Switch views
-        if (view === 'list') {
-            listView.style.display = 'block';
-            gridView.style.display = 'none';
-        } else {
-            listView.style.display = 'none';
-            gridView.style.display = 'block';
-        }
-
-        // Reapply filters to new view
-        this.applyAllFilters();
     }
 
     /**
@@ -277,7 +238,7 @@ class HistoryPage {
     }
 
     applyAllFilters() {
-        const items = this.getCurrentViewItems();
+        const items = document.querySelectorAll('.history-item');
         
         items.forEach(item => {
             let show = true;
@@ -304,7 +265,7 @@ class HistoryPage {
             // Apply search filter
             if (this.searchTerm) {
                 const query = item.dataset.query || '';
-                const queryText = item.querySelector('.query-text, .card-title');
+                const queryText = item.querySelector('.query-text');
                 const text = queryText ? queryText.textContent.toLowerCase() : query.toLowerCase();
                 
                 if (!text.includes(this.searchTerm)) {
@@ -325,16 +286,8 @@ class HistoryPage {
         this.checkEmptyState();
     }
 
-    getCurrentViewItems() {
-        if (this.currentView === 'list') {
-            return document.querySelectorAll('#historyList .history-item');
-        } else {
-            return document.querySelectorAll('#historyGrid .history-card');
-        }
-    }
-
     checkEmptyState() {
-        const items = this.getCurrentViewItems();
+        const items = document.querySelectorAll('.history-item');
         const visibleItems = Array.from(items).filter(item => !item.classList.contains('hidden'));
         
         if (visibleItems.length === 0 && items.length > 0) {

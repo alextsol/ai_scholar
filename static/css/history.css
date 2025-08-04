@@ -143,26 +143,6 @@
     color: #6c757d;
 }
 
-.view-toggle {
-    display: flex;
-    gap: 0.25rem;
-}
-
-.view-btn {
-    border-radius: 6px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.view-btn.active {
-    background-color: rgba(255,255,255,0.2);
-    border-color: rgba(255,255,255,0.3);
-    color: white;
-}
-
 .history-content {
     padding: 2rem;
 }
@@ -233,76 +213,6 @@
     overflow-y: auto;
 }
 
-/* Grid View Styles */
-.history-grid-view {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-}
-
-.history-card {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.history-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 1.25rem;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.card-title {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem 0;
-    color: var(--dark-color);
-}
-
-.card-badges {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.card-body {
-    padding: 1.25rem;
-}
-
-.card-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.meta-row {
-    display: flex;
-    align-items: center;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.card-actions {
-    padding: 1rem 1.25rem;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.card-results {
-    border-top: 1px solid #e9ecef;
-    background: white;
-}
-
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -366,10 +276,6 @@
         justify-content: center;
     }
     
-    .history-grid-view {
-        grid-template-columns: 1fr;
-    }
-    
     .search-box input {
         width: 100%;
     }
@@ -380,11 +286,11 @@
 }
 
 /* Animation for filtered items */
-.history-item.hidden, .history-card.hidden {
+.history-item.hidden {
     display: none;
 }
 
-.history-item.fade-in, .history-card.fade-in {
+.history-item.fade-in {
     animation: fadeIn 0.3s ease-in;
 }
 
