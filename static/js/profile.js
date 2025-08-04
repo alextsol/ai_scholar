@@ -51,13 +51,23 @@ class ProfilePage {
             }
         });
 
-        // Update tab panes
+        // Update tab panes with proper fade transition
         document.querySelectorAll('.tab-pane').forEach(pane => {
             if (pane.id === `${tabName}-tab`) {
-                pane.classList.add('show', 'active');
+                // Show the target tab
+                pane.style.display = 'block';
+                setTimeout(() => {
+                    pane.classList.add('show', 'active');
+                }, 10);
                 this.onTabActivated(tabName);
             } else {
+                // Hide other tabs
                 pane.classList.remove('show', 'active');
+                setTimeout(() => {
+                    if (!pane.classList.contains('show')) {
+                        pane.style.display = 'none';
+                    }
+                }, 150);
             }
         });
 

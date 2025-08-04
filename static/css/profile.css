@@ -124,6 +124,22 @@
 
 .tab-pane {
     padding: var(--spacing-xl);
+    display: none;
+    opacity: 0;
+    transition: opacity 0.15s linear;
+}
+
+.tab-pane.show.active {
+    display: block;
+    opacity: 1;
+}
+
+.tab-pane.fade {
+    transition: opacity 0.15s linear;
+}
+
+.tab-pane.fade:not(.show) {
+    opacity: 0;
 }
 
 /* Profile Section */
@@ -240,7 +256,7 @@
 /* Quick Stats Grid */
 .quick-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
 }
@@ -565,7 +581,8 @@
     }
     
     .quick-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-md);
     }
 }
 
@@ -575,7 +592,8 @@
     }
     
     .quick-stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
     }
     
     .profile-nav .nav-link {
@@ -591,6 +609,12 @@
     .setting-control {
         margin-left: 0;
         width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-stats-grid {
+        grid-template-columns: 1fr;
     }
 }
 

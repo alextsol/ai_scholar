@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Search History - AI Scholar{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar with filters and stats -->
+            <div class="col-lg-3">
+                <div class="history-sidebar">
+                    <div class="sidebar-section">
+                        <h4><i class="fas fa-chart-bar me-2"></i>Overview</h4>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">{{ searches.total }}</div>
+                                <div class="stat-label">Total Searches</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">{{ searches.items|selectattr('results_count')|map(attribute='results_count')|sum }}</div>
+                                <div class="stat-label">Papers Found</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h5><i class="fas fa-filter me-2"></i>Quick Filters</h5>
+                        <div class="filter-buttons">
+                            <button class="btn btn-outline-primary btn-sm filter-btn active" data-filter="all">
+                                All Searches
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm filter-btn" data-filter="crossref">
+                                CrossRef
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm filter-btn" data-filter="arxiv">
+                                arXiv
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm filter-btn" data-filter="semantic_scholar">
+                                Semantic Scholar
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm filter-btn" data-filter="core">
+                                CORE
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h5><i class="fas fa-calendar me-2"></i>Time Range</h5>
+                        <div class="time-filters">
+                            <button class="btn btn-outline-info btn-sm time-filter active" data-days="7">
+                                Last 7 days
+                            </button>
+                            <button class="btn btn-outline-info btn-sm time-filter" data-days="30">
+                                Last 30 days
+                            </button>
+                            <button class="btn btn-outline-info btn-sm time-filter" data-days="0">
+                                All time
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <button id="clearAllHistory" class="btn btn-outline-danger btn-sm w-100">
+                            <i class="fas fa-trash-alt me-2"></i>Clear All History
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content area -->
+            <div class="col-lg-9">
+                <div class="history-main">
+                    <div class="history-header">
+                        <h2><i class="fas fa-history me-2"></i>Search History</h2>
+                        <div class="header-controls">
+                            <div class="search-box">
+                                <input type="text" id="historySearch" class="form-control" placeholder="Search your history...">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <div class="view-toggle">
+                                <button class="btn btn-outline-secondary btn-sm view-btn active" data-view="list">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm view-btn" data-view="grid">
+                                    <i class="fas fa-th"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History content -->
+                    <div class="history-content">
+                        {% if searches.items %}
+                            <div id="historyList" class="history-list-view">
+                                {% for search in searches.items %}
+                                <div class="history-item" 
+                                     data-backend="{{ search.backend }}" 
+                                     data-mode="{{ search.mode }}"
+                                     data-date="{{ search.created_at.isoformat() }}"
+                                     data-search-id="{{ search.id }}">
+                                    
+                                    <div class="history-item-header">
+                                        <div class="query-section">
+                                            <h4 class="query-text">{{ search.query }}</h4>
+                                            <div class="query-meta">
+                                                <span class="badge bg-{{ 'primary' if search.backend == 'crossref' else 'info' if search.backend == 'arxiv' else 'success' if search.backend == 'semantic_scholar' else 'warning' }}">
+                                                    {{ search.backend.replace('_', ' ').title() }}
+                                                </span>
+                                                <span class="badge bg-secondary">{{ search.mode }}</span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ search.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                                </span>
+                                                {% if search.results_count %}
+                                                <span class="meta-item">
+                                                    <i class="fas fa-file-alt me-1"></i>
+                                                    {{ search.results_count }} results
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="history-actions">
+                                            <button class="btn btn-outline-primary btn-sm repeat-search-btn" 
+                                                    data-query="{{ search.query }}"
+                                                    data-backend="{{ search.backend }}"
+                                                    data-mode="{{ search.mode }}"
+                                                    title="Repeat this search">
+                                                <i class="fas fa-redo me-1"></i>Repeat
+                                            </button>
+                                            
+                                            {% if search.results_html %}
+                                            <button class="btn btn-outline-info btn-sm toggle-results-btn"
+                                                    data-target="#results-{{ search.id }}"
+                                                    title="View results">
+                                                <i class="fas fa-eye me-1"></i>View Results
+                                            </button>
+                                            {% endif %}
+                                            
+                                            <button class="btn btn-outline-danger btn-sm delete-search-btn" 
+                                                    data-search-id="{{ search.id }}"
+                                                    data-query="{{ search.query }}"
+                                                    title="Delete this search">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {% if search.results_html %}
+                                    <div id="results-{{ search.id }}" class="search-results-preview collapse">
+                                        <div class="results-content">
+                                            {{ search.results_html | safe }}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Grid view (initially hidden) -->
+                            <div id="historyGrid" class="history-grid-view" style="display: none;">
+                                {% for search in searches.items %}
+                                <div class="history-card" 
+                                     data-backend="{{ search.backend }}" 
+                                     data-mode="{{ search.mode }}"
+                                     data-date="{{ search.created_at.isoformat() }}"
+                                     data-search-id="{{ search.id }}">
+                                    
+                                    <div class="card-header">
+                                        <h5 class="card-title">{{ search.query[:50] }}{% if search.query|length > 50 %}...{% endif %}</h5>
+                                        <div class="card-badges">
+                                            <span class="badge bg-{{ 'primary' if search.backend == 'crossref' else 'info' if search.backend == 'arxiv' else 'success' if search.backend == 'semantic_scholar' else 'warning' }}">
+                                                {{ search.backend.replace('_', ' ').title() }}
+                                            </span>
+                                            <span class="badge bg-secondary">{{ search.mode }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-body">
+                                        <div class="card-meta">
+                                            <div class="meta-row">
+                                                <i class="fas fa-clock me-1"></i>
+                                                <span>{{ search.created_at.strftime('%m/%d/%y %I:%M %p') }}</span>
+                                            </div>
+                                            {% if search.results_count %}
+                                            <div class="meta-row">
+                                                <i class="fas fa-file-alt me-1"></i>
+                                                <span>{{ search.results_count }} results</span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-actions">
+                                        <button class="btn btn-primary btn-sm repeat-search-btn" 
+                                                data-query="{{ search.query }}"
+                                                data-backend="{{ search.backend }}"
+                                                data-mode="{{ search.mode }}">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
+                                        
+                                        {% if search.results_html %}
+                                        <button class="btn btn-info btn-sm toggle-results-btn"
+                                                data-target="#results-grid-{{ search.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <button class="btn btn-danger btn-sm delete-search-btn" 
+                                                data-search-id="{{ search.id }}"
+                                                data-query="{{ search.query }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+
+                                    {% if search.results_html %}
+                                    <div id="results-grid-{{ search.id }}" class="card-results collapse">
+                                        <div class="results-content">
+                                            {{ search.results_html | safe }}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Pagination -->
+                            {% if searches.pages > 1 %}
+                            <nav aria-label="History pagination" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if searches.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('web_main.history', page=searches.prev_num) }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in searches.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != searches.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('web_main.history', page=page_num) }}">{{ page_num }}</a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if searches.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('web_main.history', page=searches.next_num) }}">Next</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
+
+                        {% else %}
+                            <div class="empty-state">
+                                <div class="empty-icon">
+                                    <i class="fas fa-search fa-3x text-muted"></i>
+                                </div>
+                                <h3>No Search History</h3>
+                                <p class="text-muted">Start searching to build your history of academic paper searches.</p>
+                                <a href="{{ url_for('web_main.index') }}" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Start Searching
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}
