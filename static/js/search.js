@@ -356,7 +356,8 @@ class SearchPage {
             'CrossRef': 'CrossRef provides comprehensive academic metadata and DOI services.',
             'arXiv': 'arXiv is a repository of electronic preprints approved for publication.',
             'Semantic Scholar': 'Semantic Scholar uses AI to understand scientific literature.',
-            'CORE': 'CORE aggregates research papers from repositories and journals worldwide.'
+            'CORE': 'CORE aggregates research papers from repositories and journals worldwide.',
+            'OpenAlex': 'OpenAlex is an open bibliographic database with citation data for scholarly works.'
         };
 
         const info = providerInfo[providerName] || 'Academic search provider';

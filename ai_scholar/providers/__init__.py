@@ -9,6 +9,7 @@ from .arxiv_search_provider import ArxivSearchProvider
 from .semantic_scholar_provider import SemanticScholarProvider
 from .crossref_provider import CrossRefProvider
 from .core_provider import COREProvider
+from .openalex_provider import OpenAlexProvider
 
 # AI providers
 from .ai.gemini_provider import GeminiProvider
@@ -56,6 +57,9 @@ class ProviderRegistry:
         
         core_api_key = getattr(config, 'CORE_API_KEY', None)
         self.search_providers['core'] = COREProvider(core_api_key)
+        
+        openalex_mailto = getattr(config, 'OPENALEX_MAILTO', 'support@ai-scholar.com')
+        self.search_providers['openalex'] = OpenAlexProvider(openalex_mailto)
     
     def _init_ai_providers(self, config: Any):
         """Initialize AI providers"""

@@ -35,6 +35,9 @@ class ProvidersConfig:
         CORE_API_URL = os.getenv("CORE_API_URL", "https://api.core.ac.uk/v3/search/works")
         CORE_API_KEY = os.getenv("CORE_API_KEY")
         
+        OPENALEX_API_URL = os.getenv("OPENALEX_API_URL", "https://api.openalex.org/works")
+        OPENALEX_MAILTO = os.getenv("OPENALEX_MAILTO", "support@ai-scholar.com")
+        
         DEFAULT_SEARCH_BACKEND = os.getenv("DEFAULT_SEARCH_BACKEND", "crossref")
     
     @classmethod 

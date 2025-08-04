@@ -49,10 +49,26 @@ class SearchService:
         
         cached_result = get_cached_result(cache_key)
         if cached_result is not None:
+            # Convert cached dictionary papers to Paper objects
+            cached_paper_objects = []
+            for paper_dict in cached_result:
+                if isinstance(paper_dict, dict):
+                    paper_obj = Paper(
+                        title=paper_dict.get('title', ''),
+                        authors=paper_dict.get('authors', ''),
+                        abstract=paper_dict.get('abstract', ''),
+                        year=paper_dict.get('year'),
+                        url=paper_dict.get('url', ''),
+                        citations=paper_dict.get('citations'),
+                        source=paper_dict.get('source', ''),
+                        published=paper_dict.get('published', '')
+                    )
+                    cached_paper_objects.append(paper_obj)
+            
             return SearchResult(
-                papers=cached_result,
+                papers=cached_paper_objects,
                 query=search_request.query,
-                total_found=len(cached_result),
+                total_found=len(cached_paper_objects),
                 processing_time=0.0,
                 ranking_mode=search_request.ranking_mode,
                 backends_used=[backend],
@@ -78,10 +94,26 @@ class SearchService:
         if not papers:
             papers = []
         
+        # Convert dictionary papers to Paper objects
+        paper_objects = []
+        for paper_dict in papers:
+            if isinstance(paper_dict, dict):
+                paper_obj = Paper(
+                    title=paper_dict.get('title', ''),
+                    authors=paper_dict.get('authors', ''),
+                    abstract=paper_dict.get('abstract', ''),
+                    year=paper_dict.get('year'),
+                    url=paper_dict.get('url', ''),
+                    citations=paper_dict.get('citations'),
+                    source=paper_dict.get('source', ''),
+                    published=paper_dict.get('published', '')
+                )
+                paper_objects.append(paper_obj)
+        
         return SearchResult(
-            papers=papers,
+            papers=paper_objects,
             query=search_request.query,
-            total_found=len(papers),
+            total_found=len(paper_objects),
             processing_time=search_time,
             ranking_mode=search_request.ranking_mode,
             backends_used=[backend],
