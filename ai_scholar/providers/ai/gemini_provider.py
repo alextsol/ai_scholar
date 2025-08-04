@@ -226,12 +226,11 @@ PAPERS TO ANALYZE:
 REQUIRED OUTPUT:
 Return EXACTLY the top {limit} papers ranked by overall relevance score. For each paper, provide:
 1. A relevance score (1-100) based on the criteria above
-2. A detailed, specific explanation that analyzes:
+2. A concise, specific explanation (1-2 sentences) that explains:
    - WHY this paper is relevant to "{query}" (be specific about connections)
-   - WHAT unique contribution it makes to the field
-   - HOW it advances understanding of the topic
-   - WHICH specific aspects of the abstract/methods make it valuable
-   - WHO would benefit most from reading this paper
+   - WHAT unique contribution it makes that justifies its ranking
+   
+Keep explanations concise but substantive - around 50-100 words maximum.
 
 Format your response as a valid JSON array:
 [
@@ -239,24 +238,24 @@ Format your response as a valid JSON array:
     "rank": 1,
     "title": "Exact title from the paper list",
     "relevance_score": 95,
-    "explanation": "This paper is highly relevant to '{query}' because [specific reason related to query]. The authors' key contribution is [specific contribution from abstract]. The methodology/approach of [specific method] addresses [specific aspect of query]. This is particularly valuable for researchers in {query} who need [specific need]. The paper's impact is evidenced by [specific citation/innovation details]. This work would be essential reading for anyone studying [specific sub-area of query] because [specific reason]."
+    "explanation": "This paper is highly relevant to '{query}' because [specific reason related to query]. The key contribution of [specific innovation/method] makes it essential for understanding [specific aspect]."
   }},
   {{
     "rank": 2,
     "title": "Exact title from the paper list", 
     "relevance_score": 88,
-    "explanation": "This paper contributes to '{query}' by [specific contribution]. The research addresses [specific problem] using [specific approach]. What makes this particularly relevant is [specific aspect]. The findings on [specific findings] are crucial for understanding [specific concept]. Researchers working on [specific area] would find this valuable because [specific reason]. The paper's [specific methodology/data/results] provides insights that [specific benefit to field]."
+    "explanation": "This work advances '{query}' through [specific contribution/approach]. Its [specific methodology/findings] provides crucial insights for [specific application/understanding]."
   }}
 ]
 
 IMPORTANT: 
 - Use the EXACT title as provided in the paper list
+- Keep explanations to 1-2 sentences (50-100 words maximum)
 - Make explanations SPECIFIC to the paper's actual content and contribution
 - Avoid generic phrases like "this paper explores" or "the authors investigate"
 - Reference specific methodologies, findings, or innovations mentioned in abstracts
 - Explain the practical value for someone researching the topic
 - Connect the paper's contribution directly to the search query
-- Provide substantial explanations (75+ words) with concrete details
 - Ensure relevance scores reflect genuine quality and relevance differences
 ]
 """
@@ -437,10 +436,10 @@ IMPORTANT:
             elif source == 'arxiv':
                 explanation_parts.append("from arXiv preprint server")
             
-            # Combine into explanation
+            # Combine into explanation (make it more concise)
             explanation = f"Ranked #{i+1} by algorithmic relevance: {explanation_parts[0]}"
             if len(explanation_parts) > 1:
-                explanation += f", {', '.join(explanation_parts[1:])}"
+                explanation += f", {explanation_parts[1]}"  # Only add one more aspect
             explanation += f". Relevance score: {score:.1f}/100."
             
             paper_copy['explanation'] = explanation

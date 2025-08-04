@@ -405,7 +405,7 @@ class PaperService:
                 paper.pop(field, None)
     
     def _rank_by_citations(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Rank papers by citation count"""
+        """Rank papers by citation count and add custom explanations for each paper"""
         def get_citations(paper):
             citations = paper.get('citations') or paper.get('citation') or 0
             try:
@@ -414,10 +414,33 @@ class PaperService:
                 return 0
         
         sorted_papers = sorted(papers, key=get_citations, reverse=True)
+        
+        # Add custom explanations tailored to each paper's content
+        for i, paper in enumerate(sorted_papers[:limit]):
+            citations = get_citations(paper)
+            rank = i + 1
+            title = paper.get('title', '')
+            authors = paper.get('authors', '')
+            year = paper.get('year', '')
+            abstract = paper.get('abstract', '')
+            
+            # Generate custom explanation based on paper's actual content
+            explanation = self._generate_citation_explanation(
+                paper=paper,
+                rank=rank,
+                citations=citations,
+                title=title,
+                authors=authors,
+                year=year,
+                abstract=abstract
+            )
+            
+            paper['explanation'] = explanation
+        
         return sorted_papers[:limit]
     
     def _rank_by_year(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Rank papers by publication year (newest first)"""
+        """Rank papers by publication year (newest first) and add custom explanations for each paper"""
         def get_year(paper):
             year = paper.get('year', 0)
             try:
@@ -426,6 +449,27 @@ class PaperService:
                 return 0
         
         sorted_papers = sorted(papers, key=get_year, reverse=True)
+        
+        # Add custom explanations tailored to each paper's content
+        for i, paper in enumerate(sorted_papers[:limit]):
+            year = get_year(paper)
+            rank = i + 1
+            title = paper.get('title', '')
+            authors = paper.get('authors', '')
+            abstract = paper.get('abstract', '')
+            
+            # Generate custom explanation based on paper's actual content
+            explanation = self._generate_year_explanation(
+                paper=paper,
+                rank=rank,
+                year=year,
+                title=title,
+                authors=authors,
+                abstract=abstract
+            )
+            
+            paper['explanation'] = explanation
+        
         return sorted_papers[:limit]
     
     def _merge_ranked_with_details(self, ranked_papers: List[Dict[str, Any]], 
@@ -499,3 +543,177 @@ class PaperService:
             'most_relevant': relevance_data[0] if relevance_data else None,
             'average': sum(x['relevance'] for x in relevance_data) / len(relevance_data) if relevance_data else 0
         }
+    
+    def _generate_citation_explanation(self, paper: Dict[str, Any], rank: int, citations: int,
+                                     title: str, authors: str, year: str, abstract: str) -> str:
+        """Generate custom explanation for citation-based ranking"""
+        
+        # Extract key content indicators from the paper
+        content_indicators = []
+        
+        # Analyze title for key terms
+        title_lower = title.lower()
+        if any(term in title_lower for term in ['survey', 'review', 'comprehensive']):
+            content_indicators.append('comprehensive survey work')
+        elif any(term in title_lower for term in ['novel', 'new', 'innovative']):
+            content_indicators.append('innovative research')
+        elif any(term in title_lower for term in ['deep', 'neural', 'machine learning', 'ai']):
+            content_indicators.append('cutting-edge AI research')
+        elif any(term in title_lower for term in ['analysis', 'study', 'investigation']):
+            content_indicators.append('analytical study')
+        
+        # Analyze authors for recognizable patterns
+        author_insight = ""
+        if authors and ',' in authors:
+            author_count = len(authors.split(','))
+            if author_count > 5:
+                author_insight = f"collaborative work with {author_count} researchers"
+            elif author_count > 2:
+                author_insight = f"multi-author collaboration"
+        
+        # Analyze abstract for methodology clues
+        method_insights = []
+        if abstract:
+            abstract_lower = abstract.lower()
+            if any(term in abstract_lower for term in ['experiment', 'empirical', 'evaluation']):
+                method_insights.append('empirical evaluation')
+            if any(term in abstract_lower for term in ['dataset', 'data', 'benchmark']):
+                method_insights.append('data-driven analysis')
+            if any(term in abstract_lower for term in ['algorithm', 'method', 'approach']):
+                method_insights.append('methodological contribution')
+            if any(term in abstract_lower for term in ['performance', 'accuracy', 'results']):
+                method_insights.append('performance validation')
+        
+        # Create custom explanation
+        explanation_parts = []
+        
+        # Start with ranking and citation count
+        explanation_parts.append(f"Ranked #{rank} with {citations:,} citations")
+        
+        # Add content-specific reasoning
+        if content_indicators:
+            explanation_parts.append(f"as {content_indicators[0]}")
+        
+        # Add methodological insight
+        if method_insights:
+            if len(method_insights) == 1:
+                explanation_parts.append(f"featuring {method_insights[0]}")
+            else:
+                explanation_parts.append(f"combining {' and '.join(method_insights[:2])}")
+        
+        # Add collaborative insight
+        if author_insight:
+            explanation_parts.append(f"representing {author_insight}")
+        
+        # Add temporal context
+        if year:
+            try:
+                year_val = int(year)
+                current_year = 2025
+                age = current_year - year_val
+                if age <= 2:
+                    explanation_parts.append("with recent impact")
+                elif age <= 5:
+                    explanation_parts.append("with sustained influence")
+                else:
+                    explanation_parts.append("with lasting academic impact")
+            except:
+                pass
+        
+        # Combine into coherent explanation
+        if len(explanation_parts) >= 3:
+            base_explanation = f"{explanation_parts[0]} {explanation_parts[1]} {explanation_parts[2]}"
+            if len(explanation_parts) > 3:
+                base_explanation += f", {explanation_parts[3]}"
+        else:
+            base_explanation = " ".join(explanation_parts)
+        
+        # Add final insight about why this citation count matters
+        if citations > 10000:
+            impact_note = "indicating exceptional influence in shaping the field"
+        elif citations > 5000:
+            impact_note = "demonstrating significant scholarly impact"
+        elif citations > 1000:
+            impact_note = "showing strong academic recognition"
+        else:
+            impact_note = "reflecting growing scholarly interest"
+        
+        return f"{base_explanation}, {impact_note}."
+    
+    def _generate_year_explanation(self, paper: Dict[str, Any], rank: int, year: int,
+                                 title: str, authors: str, abstract: str) -> str:
+        """Generate custom explanation for year-based ranking"""
+        
+        current_year = 2025
+        
+        # Extract content characteristics
+        content_type = ""
+        title_lower = title.lower()
+        
+        if any(term in title_lower for term in ['survey', 'review', 'overview']):
+            content_type = "comprehensive review"
+        elif any(term in title_lower for term in ['novel', 'new', 'introducing']):
+            content_type = "novel contribution"
+        elif any(term in title_lower for term in ['analysis', 'study', 'investigation']):
+            content_type = "analytical study"
+        elif any(term in title_lower for term in ['framework', 'method', 'approach']):
+            content_type = "methodological work"
+        elif any(term in title_lower for term in ['application', 'implementation']):
+            content_type = "practical application"
+        else:
+            content_type = "research contribution"
+        
+        # Analyze research domain from title and abstract
+        domain_insights = []
+        combined_text = f"{title} {abstract}".lower()
+        
+        if any(term in combined_text for term in ['neural network', 'deep learning', 'ai', 'artificial intelligence']):
+            domain_insights.append('AI/ML')
+        if any(term in combined_text for term in ['computer vision', 'image', 'visual']):
+            domain_insights.append('computer vision')
+        if any(term in combined_text for term in ['natural language', 'nlp', 'text', 'language']):
+            domain_insights.append('NLP')
+        if any(term in combined_text for term in ['healthcare', 'medical', 'clinical', 'biomedical']):
+            domain_insights.append('healthcare')
+        if any(term in combined_text for term in ['robotics', 'autonomous', 'control']):
+            domain_insights.append('robotics')
+        
+        # Determine recency significance
+        age = current_year - year
+        if age <= 1:
+            temporal_significance = "presenting the very latest developments"
+            recency_value = "cutting-edge insights"
+        elif age <= 2:
+            temporal_significance = "offering recent breakthroughs"
+            recency_value = "current methodologies"
+        elif age <= 3:
+            temporal_significance = "providing contemporary perspectives"
+            recency_value = "modern approaches"
+        elif age <= 5:
+            temporal_significance = "delivering established recent work"
+            recency_value = "proven methodologies"
+        else:
+            temporal_significance = "contributing foundational insights"
+            recency_value = "established principles"
+        
+        # Build custom explanation
+        explanation_parts = []
+        
+        # Start with ranking and year
+        explanation_parts.append(f"Ranked #{rank} as a {year} {content_type}")
+        
+        # Add domain context
+        if domain_insights:
+            if len(domain_insights) == 1:
+                explanation_parts.append(f"in {domain_insights[0]}")
+            else:
+                explanation_parts.append(f"bridging {' and '.join(domain_insights[:2])}")
+        
+        # Add temporal significance
+        explanation_parts.append(f"{temporal_significance}")
+        
+        # Combine and add value proposition
+        base_explanation = " ".join(explanation_parts)
+        value_prop = f"This work provides {recency_value} essential for understanding current research directions"
+        
+        return f"{base_explanation}. {value_prop}."
