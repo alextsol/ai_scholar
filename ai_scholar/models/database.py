@@ -63,7 +63,8 @@ class SearchHistory(db.Model):
             'mode': self.mode,
             'results_count': self.results_count,
             'created_at': self.created_at.isoformat(),
-            'search_params': self.search_params
+            'search_params': self.search_params,
+            'results_html': self.results_html
         }
     
     def __repr__(self):

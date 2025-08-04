@@ -66,7 +66,7 @@ class SearchController:
             page = request.args.get('page', 1, type=int)
             per_page = request.args.get('per_page', 10, type=int)
             
-            searches = SearchHistory.query.filter_by(user_id=current_user.id)\
+            searches = db.session.query(SearchHistory).filter_by(user_id=current_user.id)\
                                         .order_by(SearchHistory.created_at.desc())\
                                         .paginate(page=page, per_page=per_page, error_out=False)
             
@@ -84,7 +84,7 @@ class SearchController:
     def get_search_details(self, search_id: int):
         """Get details of a specific search"""
         try:
-            search = SearchHistory.query.filter_by(
+            search = db.session.query(SearchHistory).filter_by(
                 id=search_id, 
                 user_id=current_user.id
             ).first()

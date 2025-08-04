@@ -362,7 +362,8 @@ class IndexPage {
         this.searchHistory.addEventListener('click', (event) => {
             const historyItem = event.target.closest('.search-history-item');
             if (historyItem && !event.target.classList.contains('delete-search-btn')) {
-                this.loadHistoryItem(historyItem);
+                event.preventDefault();
+                this.loadHistoryResults(historyItem);
             }
         });
 
@@ -381,23 +382,120 @@ class IndexPage {
         }
     }
 
-    loadHistoryItem(historyItem) {
-        const query = historyItem.dataset.query;
-        const backend = historyItem.dataset.backend;
-        const mode = historyItem.dataset.mode;
-
-        // Fill form
-        const queryInput = this.searchForm.querySelector('input[name="query"]');
-        const backendSelect = this.searchForm.querySelector('select[name="backend"]');
-        const modeInput = this.searchForm.querySelector(`input[name="mode"][value="${mode}"]`);
-
-        if (queryInput) queryInput.value = query;
-        if (backendSelect) backendSelect.value = backend;
-        if (modeInput) modeInput.checked = true;
-
-        this.updateDynamicGroups();
+    async loadHistoryResults(historyItem) {
+        const searchId = historyItem.dataset.searchId;
         
-        window.aiScholar.showNotification('Search parameters loaded from history', 'success', 2000);
+        if (!searchId) {
+            window.aiScholar.showNotification('Search ID not found', 'error', 3000);
+            return;
+        }
+
+        try {
+            // Show loading state
+            window.aiScholar.showLoader('Loading search results...');
+
+            // Fetch the search details including results
+            const response = await fetch(`/search/history/${searchId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const searchData = await response.json();
+            
+            // Display the results if they exist
+            if (searchData.results_html) {
+                this.displayResultsInMainArea(searchData);
+            } else {
+                // If no cached results, show notification
+                window.aiScholar.showNotification(
+                    'No cached results found for this search.', 
+                    'warning', 
+                    4000
+                );
+            }
+
+        } catch (error) {
+            console.error('Error loading search history:', error);
+            window.aiScholar.showNotification(
+                'Failed to load search results. Please try again.', 
+                'error', 
+                3000
+            );
+        } finally {
+            window.aiScholar.hideLoader();
+        }
+    }
+
+    displayResultsInMainArea(searchData) {
+        // Find or create the results container
+        let resultsContainer = document.querySelector('.results-section');
+        
+        if (!resultsContainer) {
+            // Create the results container if it doesn't exist
+            resultsContainer = document.createElement('div');
+            resultsContainer.className = 'results-section animate-on-scroll mt-4';
+            
+            // Insert after the search form
+            const searchSection = document.querySelector('.main-search-section');
+            if (searchSection) {
+                searchSection.insertAdjacentElement('afterend', resultsContainer);
+            }
+        }
+
+        // Clear existing results
+        resultsContainer.innerHTML = '';
+
+        // Add header with search info
+        const headerHtml = `
+            <div class="result-stats">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4>
+                            <i class="fas fa-history me-2"></i>Previous Search Results
+                        </h4>
+                        <p class="mb-0">
+                            Query: "${searchData.query}" • Backend: ${searchData.backend} • 
+                            Found <strong>${searchData.results_count || 0}</strong> results • 
+                            Date: ${new Date(searchData.created_at).toLocaleString()}
+                        </p>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="this.closest('.results-section').style.display = 'none'">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Add the results content in a result-grid wrapper to match normal results styling
+        const resultsContentHtml = `
+            <div class="result-grid">
+                <div class="historical-results">
+                    ${searchData.results_html || '<div class="alert alert-info">No results available for this search.</div>'}
+                </div>
+            </div>
+        `;
+
+        resultsContainer.innerHTML = headerHtml + resultsContentHtml;
+
+        // Show the results container
+        resultsContainer.style.display = 'block';
+
+        // Scroll to results
+        resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Show success notification
+        window.aiScholar.showNotification(
+            `Loaded ${searchData.results_count || 0} results for "${searchData.query}"`, 
+            'success', 
+            3000
+        );
     }
 
     deleteHistoryItem(button) {
