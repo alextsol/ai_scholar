@@ -335,3 +335,81 @@
     background-color: var(--primary-color);
     border-color: var(--primary-color);
 }
+
+/* Results Filter Controls for History */
+.search-results-preview .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.search-results-preview .results-header h5 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+.search-results-preview .filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.search-results-preview .filter-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.search-results-preview .filter-select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    transition: var(--transition-base);
+    min-width: 160px;
+}
+
+.search-results-preview .filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 144, 220, 0.25);
+}
+
+/* Responsive adjustments for filter controls in history */
+@media (max-width: 768px) {
+    .search-results-preview .results-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .search-results-preview .filter-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .search-results-preview .filter-select {
+        min-width: 140px;
+    }
+}
+
+/* Dark mode support for history filters */
+[data-bs-theme="dark"] .search-results-preview .results-header {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+}
+
+[data-bs-theme="dark"] .search-results-preview .filter-select {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}

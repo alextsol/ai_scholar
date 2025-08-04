@@ -456,7 +456,7 @@ class IndexPage {
         // Add header with search info
         const headerHtml = `
             <div class="result-stats">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="stats-header">
                     <div>
                         <h4>
                             <i class="fas fa-history me-2"></i>Previous Search Results
@@ -467,6 +467,21 @@ class IndexPage {
                             Date: ${new Date(searchData.created_at).toLocaleString()}
                         </p>
                     </div>
+                    <div class="filter-controls">
+                        <label for="history-result-filter-${searchData.id}" class="filter-label">
+                            <i class="fas fa-filter me-1"></i>Sort by:
+                        </label>
+                        <select id="history-result-filter-${searchData.id}" class="filter-select result-filter" data-search-id="${searchData.id}">
+                            <option value="default">Default Order</option>
+                            <option value="citations">Citations (High to Low)</option>
+                            <option value="year">Year (Newest First)</option>
+                            <option value="title">Title (A-Z)</option>
+                            ${searchData.mode === 'aggregate' ? '<option value="provider">Provider</option>' : ''}
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div></div>
                     <button class="btn btn-outline-secondary btn-sm" onclick="this.closest('.results-section').style.display = 'none'">
                         <i class="fas fa-times me-1"></i>Clear
                     </button>
@@ -476,7 +491,7 @@ class IndexPage {
 
         // Add the results content in a result-grid wrapper to match normal results styling
         const resultsContentHtml = `
-            <div class="result-grid">
+            <div class="result-grid results-content">
                 <div class="historical-results">
                     ${searchData.results_html || '<div class="alert alert-info">No results available for this search.</div>'}
                 </div>
@@ -613,181 +628,6 @@ class IndexPage {
             });
         }
     }
-
-    /**
-     * Result Filtering (shared with SearchPage)
-     */
-    setupResultFiltering() {
-        const filterSelect = document.getElementById('result-filter');
-        if (!filterSelect) return;
-
-        filterSelect.addEventListener('change', (event) => {
-            this.filterResults(event.target.value);
-        });
-    }
-
-    filterResults(filterType) {
-        const resultsContainer = document.querySelector('.results-section');
-        if (!resultsContainer) return;
-
-        const resultGroups = resultsContainer.querySelectorAll('.result-provider-section');
-        const allPapers = [];
-
-        // Collect all papers with their metadata
-        resultGroups.forEach(group => {
-            const provider = this.getProviderFromGroup(group);
-            const papers = group.querySelectorAll('.result-card');
-            
-            papers.forEach(paper => {
-                const paperData = this.extractPaperData(paper, provider);
-                if (paperData) {
-                    allPapers.push({
-                        element: paper.cloneNode(true),
-                        data: paperData,
-                        originalGroup: group
-                    });
-                }
-            });
-        });
-
-        // Sort papers based on filter type
-        this.sortPapers(allPapers, filterType);
-
-        // Re-render results
-        this.renderFilteredResults(allPapers, filterType, resultsContainer);
-    }
-
-    getProviderFromGroup(group) {
-        const heading = group.querySelector('h5');
-        if (heading) {
-            const text = heading.textContent.trim();
-            // Extract provider name (remove badge text and icons)
-            const match = text.match(/([A-Za-z\s]+?)(?:\s*\d+\s+papers|$)/);
-            return match ? match[1].trim() : text;
-        }
-        return 'Unknown';
-    }
-
-    extractPaperData(paperElement, provider) {
-        const titleElement = paperElement.querySelector('.paper-title');
-        const title = titleElement ? titleElement.textContent.trim().replace(/\s*\n\s*/g, ' ') : '';
-        
-        // Extract year
-        let year = null;
-        const yearElement = paperElement.querySelector('.meta-item:has(i.fa-calendar) span');
-        if (yearElement) {
-            const yearMatch = yearElement.textContent.match(/\d{4}/);
-            year = yearMatch ? parseInt(yearMatch[0]) : null;
-        }
-
-        // Extract citations
-        let citations = 0;
-        const citationElement = paperElement.querySelector('.meta-item:has(i.fa-quote-right) span');
-        if (citationElement) {
-            const citationMatch = citationElement.textContent.match(/(\d+)/);
-            citations = citationMatch ? parseInt(citationMatch[0]) : 0;
-        }
-
-        return {
-            title: title,
-            year: year,
-            citations: citations,
-            provider: provider
-        };
-    }
-
-    sortPapers(papers, filterType) {
-        switch (filterType) {
-            case 'citations':
-                papers.sort((a, b) => (b.data.citations || 0) - (a.data.citations || 0));
-                break;
-            case 'year':
-                papers.sort((a, b) => (b.data.year || 0) - (a.data.year || 0));
-                break;
-            case 'title':
-                papers.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
-                break;
-            case 'provider':
-                papers.sort((a, b) => (a.data.provider || '').localeCompare(b.data.provider || ''));
-                break;
-            case 'default':
-            default:
-                // Keep original order (no sorting needed)
-                break;
-        }
-    }
-
-    renderFilteredResults(papers, filterType, container) {
-        // Clear existing results
-        const existingGroups = container.querySelectorAll('.result-provider-section');
-        existingGroups.forEach(group => group.remove());
-
-        if (filterType === 'provider') {
-            // Group by provider
-            this.renderGroupedResults(papers, container);
-        } else {
-            // Show all papers in a single group
-            this.renderSingleGroupResults(papers, filterType, container);
-        }
-    }
-
-    renderGroupedResults(papers, container) {
-        const groupedPapers = {};
-        
-        papers.forEach(paper => {
-            const provider = paper.data.provider;
-            if (!groupedPapers[provider]) {
-                groupedPapers[provider] = [];
-            }
-            groupedPapers[provider].push(paper);
-        });
-
-        Object.keys(groupedPapers).sort().forEach(provider => {
-            const group = this.createResultGroup(provider, groupedPapers[provider]);
-            container.appendChild(group);
-        });
-    }
-
-    renderSingleGroupResults(papers, filterType, container) {
-        const filterLabels = {
-            'citations': 'Citations',
-            'year': 'Year',
-            'title': 'Alphabetical',
-            'default': 'Default Order'
-        };
-        
-        const groupTitle = `Sorted by ${filterLabels[filterType] || 'Default Order'}`;
-        const group = this.createResultGroup(groupTitle, papers);
-        container.appendChild(group);
-    }
-
-    createResultGroup(title, papers) {
-        const group = document.createElement('div');
-        group.className = 'result-provider-section';
-        
-        const heading = document.createElement('h5');
-        heading.innerHTML = `
-            <i class="fas fa-folder-open me-2"></i>
-            ${title}
-            <span class="badge bg-secondary">${papers.length} papers</span>
-        `;
-        group.appendChild(heading);
-
-        // Create row structure for index page
-        const row = document.createElement('div');
-        row.className = 'row';
-        
-        papers.forEach(paper => {
-            const col = document.createElement('div');
-            col.className = 'col-lg-6 mb-3';
-            col.appendChild(paper.element);
-            row.appendChild(col);
-        });
-        
-        group.appendChild(row);
-        return group;
-    }
-
 }
 
 // Initialize when DOM is loaded
