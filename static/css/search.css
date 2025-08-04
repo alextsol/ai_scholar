@@ -380,3 +380,56 @@
     border-color: #4a5568;
     color: #e2e8f0;
 }
+
+/* Aggregation Statistics */
+.aggregation-stats .card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.aggregation-stats .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-item {
+    padding: var(--spacing-md);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--muted-color);
+    font-weight: 500;
+    margin-top: var(--spacing-xs);
+}
+
+.aggregation-stats ul {
+    margin-bottom: 0;
+}
+
+.aggregation-stats .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Dark mode for aggregation stats */
+[data-bs-theme="dark"] .aggregation-stats .card-header {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-color: #4a5568;
+}
+
+[data-bs-theme="dark"] .stat-number {
+    color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .stat-label {
+    color: #a0aec0;
+}

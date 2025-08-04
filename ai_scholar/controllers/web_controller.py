@@ -140,6 +140,10 @@ class WebController:
                     context['results'] = results
                     context['papersCount'] = len(search_result.papers)
                     results_for_history = results
+                    
+                    # Add aggregation statistics if available
+                    if hasattr(search_result, 'aggregation_stats') and search_result.aggregation_stats:
+                        context['aggregation_stats'] = search_result.aggregation_stats
                 else:
                     flash('No results found for your query', 'info')
                     backend_used = selected_backend or 'Unknown'

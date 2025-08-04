@@ -226,8 +226,12 @@ PAPERS TO ANALYZE:
 REQUIRED OUTPUT:
 Return EXACTLY the top {limit} papers ranked by overall relevance score. For each paper, provide:
 1. A relevance score (1-100) based on the criteria above
-2. A detailed explanation of why this paper deserves its ranking
-3. Specific aspects that make it valuable for someone studying "{query}"
+2. A detailed, specific explanation that analyzes:
+   - WHY this paper is relevant to "{query}" (be specific about connections)
+   - WHAT unique contribution it makes to the field
+   - HOW it advances understanding of the topic
+   - WHICH specific aspects of the abstract/methods make it valuable
+   - WHO would benefit most from reading this paper
 
 Format your response as a valid JSON array:
 [
@@ -235,21 +239,25 @@ Format your response as a valid JSON array:
     "rank": 1,
     "title": "Exact title from the paper list",
     "relevance_score": 95,
-    "explanation": "Detailed explanation covering: semantic relevance, research quality, impact, and why it's essential for understanding {query}. Mention specific aspects from the abstract that make it valuable."
+    "explanation": "This paper is highly relevant to '{query}' because [specific reason related to query]. The authors' key contribution is [specific contribution from abstract]. The methodology/approach of [specific method] addresses [specific aspect of query]. This is particularly valuable for researchers in {query} who need [specific need]. The paper's impact is evidenced by [specific citation/innovation details]. This work would be essential reading for anyone studying [specific sub-area of query] because [specific reason]."
   }},
   {{
     "rank": 2,
     "title": "Exact title from the paper list", 
     "relevance_score": 88,
-    "explanation": "Detailed explanation..."
+    "explanation": "This paper contributes to '{query}' by [specific contribution]. The research addresses [specific problem] using [specific approach]. What makes this particularly relevant is [specific aspect]. The findings on [specific findings] are crucial for understanding [specific concept]. Researchers working on [specific area] would find this valuable because [specific reason]. The paper's [specific methodology/data/results] provides insights that [specific benefit to field]."
   }}
 ]
 
 IMPORTANT: 
 - Use the EXACT title as provided in the paper list
-- Rank papers by their actual contribution to understanding "{query}", not by publication prestige
-- Provide substantial explanations (50+ words) showing deep analysis
-- Ensure relevance scores reflect genuine quality differences
+- Make explanations SPECIFIC to the paper's actual content and contribution
+- Avoid generic phrases like "this paper explores" or "the authors investigate"
+- Reference specific methodologies, findings, or innovations mentioned in abstracts
+- Explain the practical value for someone researching the topic
+- Connect the paper's contribution directly to the search query
+- Provide substantial explanations (75+ words) with concrete details
+- Ensure relevance scores reflect genuine quality and relevance differences
 ]
 """
     
@@ -388,7 +396,54 @@ IMPORTANT:
         fallback_papers = []
         for i, (score, paper) in enumerate(scored_papers[:limit]):
             paper_copy = paper.copy()
-            paper_copy['explanation'] = f"Ranked #{i+1} by relevance score: {score:.1f} (based on citations, recency, and content quality)"
+            
+            # Create more specific explanation based on paper attributes
+            explanation_parts = []
+            
+            # Add citation-based reasoning
+            citations = paper.get('citations', 0) or 0
+            if citations > 1000:
+                explanation_parts.append(f"highly cited work ({citations:,} citations) indicating significant impact")
+            elif citations > 100:
+                explanation_parts.append(f"well-cited research ({citations} citations) showing academic recognition")
+            elif citations > 10:
+                explanation_parts.append(f"moderately cited ({citations} citations)")
+            else:
+                explanation_parts.append("emerging research")
+            
+            # Add recency reasoning
+            year = paper.get('year')
+            if year:
+                if year >= 2022:
+                    explanation_parts.append("recent publication with current relevance")
+                elif year >= 2018:
+                    explanation_parts.append("relatively recent work")
+                elif year >= 2010:
+                    explanation_parts.append("established research")
+                else:
+                    explanation_parts.append("foundational work")
+            
+            # Add quality indicators
+            abstract = paper.get('abstract', '')
+            if abstract and len(abstract) > 200:
+                explanation_parts.append("comprehensive abstract indicating thorough research")
+            elif abstract and len(abstract) > 100:
+                explanation_parts.append("detailed abstract")
+            
+            # Add source credibility
+            source = paper.get('source', '').lower()
+            if source in ['crossref', 'semantic_scholar']:
+                explanation_parts.append("from reputable academic source")
+            elif source == 'arxiv':
+                explanation_parts.append("from arXiv preprint server")
+            
+            # Combine into explanation
+            explanation = f"Ranked #{i+1} by algorithmic relevance: {explanation_parts[0]}"
+            if len(explanation_parts) > 1:
+                explanation += f", {', '.join(explanation_parts[1:])}"
+            explanation += f". Relevance score: {score:.1f}/100."
+            
+            paper_copy['explanation'] = explanation
             paper_copy['ai_relevance_score'] = int(score)
             fallback_papers.append(paper_copy)
         

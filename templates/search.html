@@ -108,6 +108,10 @@
                            value="{{ ai_result_limit or 10 }}" 
                            min="1" 
                            max="100">
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Optimized aggregation: Up to 200 papers pre-ranked, then AI selects the best matches
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -132,6 +136,92 @@
     <!-- Results Section -->
     {% if results %}
     <div class="results-container animate-on-scroll">
+        <!-- Aggregation Statistics (for aggregate mode) -->
+        {% if mode == 'aggregate' and aggregation_stats %}
+        <div class="aggregation-stats mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Aggregation Process Summary
+                        <button class="btn btn-sm btn-outline-secondary float-end" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#statsDetails" 
+                                aria-expanded="false" aria-controls="statsDetails">
+                            <i class="fas fa-info-circle"></i> Details
+                        </button>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <div class="stat-number">{{ aggregation_stats.total_collected }}</div>
+                                <div class="stat-label">Papers Collected</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <div class="stat-number">{{ aggregation_stats.after_dedup }}</div>
+                                <div class="stat-label">After Deduplication</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <div class="stat-number">{{ aggregation_stats.sent_to_ai }}</div>
+                                <div class="stat-label">Sent to AI</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <div class="stat-number">{{ papersCount }}</div>
+                                <div class="stat-label">Final Results</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="statsDetails">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Provider Breakdown:</h6>
+                                <ul class="list-unstyled">
+                                    {% for provider, stats in aggregation_stats.providers_used.items() %}
+                                    <li>
+                                        <strong>{{ provider.replace('_', ' ').title() }}:</strong>
+                                        {{ stats.raw_count }} → {{ stats.after_filter }} papers
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Optimization Applied:</h6>
+                                <ul class="list-unstyled">
+                                    <li>
+                                        <i class="fas fa-filter me-1"></i>
+                                        Quality pre-filtering: 
+                                        <span class="badge bg-success">✓ Applied</span>
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-clone me-1"></i>
+                                        Duplicate removal: 
+                                        <span class="badge bg-success">✓ Applied</span>
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-sort me-1"></i>
+                                        Pre-ranking: 
+                                        {% if aggregation_stats.pre_ranking_applied %}
+                                        <span class="badge bg-success">✓ Applied</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Not needed</span>
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
         <div class="results-header">
             <h2><i class="fas fa-file-alt me-2"></i>Search Results</h2>
             <div class="results-controls">

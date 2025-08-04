@@ -63,18 +63,18 @@ class ArxivSearchProvider(ISearchProvider):
         # Clean the query
         clean_query = query.strip()
         
-        # Add date filters if specified
-        date_filter = ""
+        # For machine learning, use a simpler approach
+        # Search in all fields (title, abstract, comments, etc.)
+        arxiv_query = f"all:\"{clean_query}\""
+        
+        # Add date filters if specified - use simpler format
         if min_year or max_year:
             if min_year and max_year:
-                date_filter = f" AND submittedDate:[{min_year}0101 TO {max_year}1231]"
+                arxiv_query += f" AND submittedDate:[{min_year}0101 TO {max_year}1231]"
             elif min_year:
-                date_filter = f" AND submittedDate:[{min_year}0101 TO *]"
+                arxiv_query += f" AND submittedDate:[{min_year}0101 TO *]"
             elif max_year:
-                date_filter = f" AND submittedDate:[* TO {max_year}1231]"
-        
-        # Search in title, abstract, and keywords
-        arxiv_query = f"(ti:\"{clean_query}\" OR abs:\"{clean_query}\" OR cat:\"{clean_query}\"){date_filter}"
+                arxiv_query += f" AND submittedDate:[* TO {max_year}1231]"
         
         return arxiv_query
     

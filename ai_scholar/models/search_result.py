@@ -17,6 +17,9 @@ class SearchResult:
     cache_hit: bool = False
     created_at: Optional[datetime] = None
     
+    # Aggregation statistics for transparency
+    aggregation_stats: Optional[Dict[str, Any]] = None
+    
     def __post_init__(self):
         """Set creation timestamp"""
         if self.created_at is None:

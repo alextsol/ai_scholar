@@ -16,6 +16,12 @@ class Settings:
     MAX_AI_RESULT_LIMIT = 100
     DEFAULT_AI_RESULT_LIMIT = 50
     
+    # Aggregate search optimization settings
+    MAX_PAPERS_FOR_AI = int(os.getenv("MAX_PAPERS_FOR_AI", "200"))  # Max papers to send to AI
+    MAX_PER_PROVIDER = int(os.getenv("MAX_PER_PROVIDER", "100"))   # Max papers per provider
+    MAX_PER_PROVIDER_AFTER_FILTER = int(os.getenv("MAX_PER_PROVIDER_AFTER_FILTER", "50"))  # After quality filtering
+    PRE_FILTER_MIN_SCORE = float(os.getenv("PRE_FILTER_MIN_SCORE", "0.3"))  # Minimum quality score
+    
     # Ranking settings
     CITATION_WEIGHT_AI = 0.3
     CITATION_WEIGHT_CITATION = 0.5

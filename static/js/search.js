@@ -58,8 +58,13 @@ class SearchPage {
             return;
         }
 
-        // Show loader with search message
-        window.aiScholar.showLoader('Searching academic papers...');
+        // Show appropriate loader message based on mode
+        let loaderMessage = 'Searching academic papers...';
+        if (searchData.mode === 'aggregate') {
+            loaderMessage = 'Aggregating from multiple providers and optimizing results...';
+        }
+        
+        window.aiScholar.showLoader(loaderMessage);
 
         try {
             // Submit form normally for now, but prepare for AJAX
@@ -267,7 +272,11 @@ class SearchPage {
         
         if (mode === 'aggregate') {
             if (aiResultsGroup) aiResultsGroup.style.display = 'block';
-            window.aiScholar.showNotification('Aggregate mode will search multiple providers and rank results using AI', 'info', 4000);
+            window.aiScholar.showNotification(
+                'Aggregate mode uses intelligent optimization: collects from all providers, ' +
+                'removes duplicates, pre-ranks by relevance, then uses AI for final selection.', 
+                'info', 6000
+            );
         } else {
             if (aiResultsGroup) aiResultsGroup.style.display = 'none';
         }
