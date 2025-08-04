@@ -49,27 +49,69 @@ class PaperService:
             'pre_ranking_applied': False
         }
         
-        # Step 1: Collect from all providers with dynamic limits
+        # Step 1: Optimize provider selection and limits based on ranking mode
+        providers_to_use, per_provider_limits = self._optimize_provider_usage(
+            ranking_mode, limit, ai_result_limit
+        )
+        
+        # Debug logging
+        logger.info(f"Provider optimization for {ranking_mode} mode:")
+        logger.info(f"  Providers to use: {providers_to_use}")
+        logger.info(f"  Per provider limits: {per_provider_limits}")
+        logger.info(f"  Available providers: {list(self.search_providers.keys())}")
+        
         max_papers_for_ai = Settings.MAX_PAPERS_FOR_AI  # Maximum papers to send to AI model
-        max_per_provider = min(limit, Settings.MAX_PER_PROVIDER)  # Cap individual provider results
         
         for backend_name, backend_func in self.search_providers.items():
+            # Skip providers that don't support the ranking mode requirements
+            if backend_name not in providers_to_use:
+                logger.info(f"Skipping {backend_name} (not in providers_to_use)")
+                continue
+                
             try:
-                result = backend_func(query, max_per_provider, min_year, max_year)
+                provider_limit = per_provider_limits.get(backend_name, limit)
+                logger.info(f"Calling {backend_name} with limit {provider_limit}")
+                result = backend_func(query, provider_limit, min_year, max_year)
                 papers = self._extract_papers_from_result(result, backend_name)
+                logger.info(f"{backend_name} returned {len(papers) if papers else 0} papers")
                 
                 if papers:
                     stats['total_collected'] += len(papers)
                     # Pre-filter each provider's results for quality
-                    quality_papers = self._pre_filter_papers(papers, query, backend_name)
+                    try:
+                        quality_papers = self._pre_filter_papers(papers, query, backend_name)
+                        logger.info(f"{backend_name} after filtering: {len(quality_papers)} papers")
+                        stats['providers_used'][backend_name] = {
+                            'raw_count': len(papers),
+                            'after_filter': len(quality_papers)
+                        }
+                        aggregated_papers.extend(quality_papers)
+                        sources_used.append(backend_name)
+                    except Exception as filter_error:
+                        logger.error(f"Error filtering {backend_name} papers: {str(filter_error)}")
+                        # If filtering fails, use papers without filtering but with source info
+                        for paper in papers:
+                            paper['source'] = backend_name
+                        stats['providers_used'][backend_name] = {
+                            'raw_count': len(papers),
+                            'after_filter': len(papers)
+                        }
+                        aggregated_papers.extend(papers)
+                        sources_used.append(backend_name)
+                        logger.info(f"{backend_name} used without filtering: {len(papers)} papers")
+                else:
+                    logger.info(f"{backend_name} returned no papers")
                     stats['providers_used'][backend_name] = {
-                        'raw_count': len(papers),
-                        'after_filter': len(quality_papers)
+                        'raw_count': 0,
+                        'after_filter': 0
                     }
-                    aggregated_papers.extend(quality_papers)
-                    sources_used.append(backend_name)
                     
             except Exception as e:
+                logger.error(f"Error calling {backend_name}: {str(e)}")
+                stats['providers_used'][backend_name] = {
+                    'raw_count': 0,
+                    'after_filter': 0
+                }
                 continue
         
         if not aggregated_papers:
@@ -167,6 +209,89 @@ class PaperService:
             aggregation_stats=stats
         )
     
+    def _optimize_provider_usage(self, ranking_mode: str, limit: int, ai_result_limit: int) -> tuple:
+        """
+        Optimize provider selection and limits based on ranking mode requirements
+        
+        Args:
+            ranking_mode: The ranking mode being used
+            limit: Base limit per provider
+            ai_result_limit: Final number of results needed
+            
+        Returns:
+            Tuple of (providers_to_use, per_provider_limits)
+        """
+        # Define which providers support citations
+        citation_providers = ['semantic_scholar', 'crossref', 'openalex', 'core']
+        all_providers = list(self.search_providers.keys())
+        
+        if ranking_mode == 'citations':
+            # For citation-based ranking, focus on providers with citation data
+            providers_to_use = [p for p in all_providers if p in citation_providers]
+            
+            # Calculate optimal limits to get maximum results
+            # We want more results for citation ranking since we need to find highly cited papers
+            target_total = max(ai_result_limit * 10, 500)  # Aim for 10x final results or 500, whichever is larger
+            per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
+            
+            # Distribute limits with priority on high-quality providers
+            per_provider_limits = {}
+            for provider in providers_to_use:
+                if provider == 'semantic_scholar':
+                    # Semantic Scholar has excellent citation data
+                    per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
+                elif provider == 'crossref':
+                    # CrossRef is reliable for citation counts
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                elif provider == 'openalex':
+                    # OpenAlex has good coverage
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                else:
+                    # Core and others get standard limit
+                    per_provider_limits[provider] = per_provider_base
+                    
+            logger.info(f"Citation mode: Using {len(providers_to_use)} providers with enhanced limits for citation data")
+            logger.info(f"Provider limits: {per_provider_limits}")
+            
+        elif ranking_mode == 'year':
+            # For newest papers ranking, use all providers but optimize for recency and coverage
+            providers_to_use = all_providers
+            
+            # Calculate enhanced limits to get maximum recent papers
+            target_total = max(ai_result_limit * 8, 400)  # Aim for 8x final results to find best recent papers
+            per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
+            
+            # Distribute limits with priority on providers good for recent papers
+            per_provider_limits = {}
+            for provider in providers_to_use:
+                if provider == 'arxiv':
+                    # ArXiv is excellent for very recent preprints and cutting-edge research
+                    per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
+                elif provider == 'semantic_scholar':
+                    # Semantic Scholar has good recent coverage and metadata
+                    per_provider_limits[provider] = min(per_provider_base * 1.8, Settings.MAX_PER_PROVIDER)
+                elif provider == 'openalex':
+                    # OpenAlex has comprehensive recent coverage
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                elif provider == 'crossref':
+                    # CrossRef for published recent work
+                    per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
+                else:
+                    # Core and others get standard limit
+                    per_provider_limits[provider] = per_provider_base
+                    
+            logger.info(f"Year mode: Using {len(providers_to_use)} providers optimized for recent papers")
+            logger.info(f"Provider limits: {per_provider_limits}")
+            
+        else:
+            # For other ranking modes, use all providers
+            providers_to_use = all_providers
+            max_per_provider = min(limit, Settings.MAX_PER_PROVIDER)
+            per_provider_limits = {provider: max_per_provider for provider in providers_to_use}
+            logger.info(f"Standard mode: Using {len(providers_to_use)} providers with uniform limits")
+        
+        return providers_to_use, per_provider_limits
+    
     def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific paper"""
         return None
@@ -258,30 +383,58 @@ class PaperService:
         query_words = set(query.lower().split())
         
         for paper in papers:
-            # Basic quality checks
-            title = paper.get('title', '').strip()
-            authors = paper.get('authors', '').strip()
-            abstract = paper.get('abstract', '').strip()
-            
-            # Skip papers without essential information
-            if not title or len(title) < 10:
+            try:
+                # Basic quality checks with safe string handling
+                title = paper.get('title', '')
+                if isinstance(title, list):
+                    title = ' '.join(str(t) for t in title if t is not None)
+                elif title is None:
+                    title = ''
+                title = str(title).strip()
+                
+                authors = paper.get('authors', '')
+                if isinstance(authors, list):
+                    authors = ', '.join(str(a) for a in authors if a is not None)
+                elif authors is None:
+                    authors = ''
+                authors = str(authors).strip()
+                
+                abstract = paper.get('abstract', '')
+                if isinstance(abstract, list):
+                    abstract = ' '.join(str(a) for a in abstract if a is not None)
+                elif abstract is None:
+                    abstract = ''
+                abstract = str(abstract).strip()
+                
+                # Skip papers without essential information
+                if not title or len(title) < 10:
+                    continue
+                if not authors or authors.lower() in ['unknown', 'n/a', 'no authors']:
+                    continue
+                
+                # Update paper with cleaned fields
+                paper['title'] = title
+                paper['authors'] = authors
+                paper['abstract'] = abstract
+                
+                # Calculate relevance score for this paper
+                relevance_score = self._calculate_relevance_score(paper, query_words)
+                
+                # Quality score based on available metadata
+                quality_score = self._calculate_quality_score(paper)
+                
+                # Combined score
+                combined_score = (relevance_score * 0.7) + (quality_score * 0.3)
+                paper['_pre_filter_score'] = combined_score
+                
+                # Only keep papers above a minimum threshold
+                if combined_score > Settings.PRE_FILTER_MIN_SCORE:  # Configurable threshold
+                    filtered.append(paper)
+                    
+            except Exception as e:
+                # Skip papers that cause errors during filtering
+                logger.debug(f"Error filtering paper from {provider}: {str(e)}")
                 continue
-            if not authors or authors.lower() in ['unknown', 'n/a', 'no authors']:
-                continue
-            
-            # Calculate relevance score for this paper
-            relevance_score = self._calculate_relevance_score(paper, query_words)
-            
-            # Quality score based on available metadata
-            quality_score = self._calculate_quality_score(paper)
-            
-            # Combined score
-            combined_score = (relevance_score * 0.7) + (quality_score * 0.3)
-            paper['_pre_filter_score'] = combined_score
-            
-            # Only keep papers above a minimum threshold
-            if combined_score > Settings.PRE_FILTER_MIN_SCORE:  # Configurable threshold
-                filtered.append(paper)
         
         # Sort by score and return top papers from this provider
         filtered.sort(key=lambda x: x.get('_pre_filter_score', 0), reverse=True)
@@ -291,14 +444,25 @@ class PaperService:
     def _calculate_relevance_score(self, paper: Dict[str, Any], query_words: set) -> float:
         """Calculate relevance score based on query matching"""
         score = 0.0
-        title = paper.get('title', '').lower()
-        abstract = paper.get('abstract', '').lower()
+        
+        # Safe string handling for title
+        title = paper.get('title', '')
+        if isinstance(title, list):
+            title = ' '.join(str(t) for t in title)
+        title = str(title).lower() if title else ''
+        
+        # Safe string handling for abstract
+        abstract = paper.get('abstract', '')
+        if isinstance(abstract, list):
+            abstract = ' '.join(str(a) for a in abstract)
+        abstract = str(abstract).lower() if abstract else ''
         
         # Title matching (higher weight)
-        title_words = set(title.split())
-        title_matches = len(query_words.intersection(title_words))
-        if title_matches > 0:
-            score += (title_matches / len(query_words)) * 0.6
+        if title:
+            title_words = set(title.split())
+            title_matches = len(query_words.intersection(title_words))
+            if title_matches > 0:
+                score += (title_matches / len(query_words)) * 0.6
         
         # Abstract matching (lower weight)
         if abstract:
@@ -328,8 +492,12 @@ class PaperService:
         if paper.get('url'):
             score += 0.2
         
-        # Has abstract (more informative)
+        # Has abstract (more informative) - safe string handling
         abstract = paper.get('abstract', '')
+        if isinstance(abstract, list):
+            abstract = ' '.join(str(a) for a in abstract)
+        abstract = str(abstract) if abstract else ''
+        
         if abstract and len(abstract) > 100:
             score += 0.3
         elif abstract and len(abstract) > 50:
@@ -399,7 +567,8 @@ class PaperService:
     
     def _cleanup_temporary_fields(self, papers: List[Dict[str, Any]]) -> None:
         """Remove temporary scoring fields from papers"""
-        temp_fields = ['_pre_filter_score', '_fast_rank_score', '_quality_score']
+        temp_fields = ['_pre_filter_score', '_fast_rank_score', '_quality_score', 
+                      '_year_relevance_score', '_year_score_components']
         for paper in papers:
             for field in temp_fields:
                 paper.pop(field, None)
@@ -413,7 +582,30 @@ class PaperService:
             except (ValueError, TypeError):
                 return 0
         
-        sorted_papers = sorted(papers, key=get_citations, reverse=True)
+        # Filter out papers without citation data to improve quality
+        papers_with_citations = []
+        papers_without_citations = []
+        
+        for paper in papers:
+            citations = get_citations(paper)
+            if citations > 0:
+                papers_with_citations.append(paper)
+            else:
+                papers_without_citations.append(paper)
+        
+        # Sort papers with citations by citation count
+        sorted_cited_papers = sorted(papers_with_citations, key=get_citations, reverse=True)
+        
+        # If we need more papers, include some without citations (sorted by year/quality)
+        if len(sorted_cited_papers) < limit and papers_without_citations:
+            remaining_needed = limit - len(sorted_cited_papers)
+            # Sort papers without citations by year (newest first) as fallback
+            sorted_uncited = sorted(papers_without_citations, 
+                                  key=lambda p: p.get('year', 0) if str(p.get('year', 0)).isdigit() else 0, 
+                                  reverse=True)
+            sorted_papers = sorted_cited_papers + sorted_uncited[:remaining_needed]
+        else:
+            sorted_papers = sorted_cited_papers
         
         # Add custom explanations tailored to each paper's content
         for i, paper in enumerate(sorted_papers[:limit]):
@@ -440,7 +632,10 @@ class PaperService:
         return sorted_papers[:limit]
     
     def _rank_by_year(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Rank papers by publication year (newest first) and add custom explanations for each paper"""
+        """
+        Rank papers by publication year with relevance weighting for optimal recent & relevant results
+        Combines recency with relevance to find the most valuable up-to-date papers
+        """
         def get_year(paper):
             year = paper.get('year', 0)
             try:
@@ -448,24 +643,100 @@ class PaperService:
             except (ValueError, TypeError):
                 return 0
         
-        sorted_papers = sorted(papers, key=get_year, reverse=True)
+        current_year = 2025
         
-        # Add custom explanations tailored to each paper's content
+        # Enhanced ranking: combine recency with relevance and quality
+        def calculate_year_relevance_score(paper):
+            # Recency score (0.0 to 1.0, with recent papers getting higher scores)
+            year = get_year(paper)
+            if year <= 0:
+                recency_score = 0.0
+            else:
+                age = current_year - year
+                if age <= 1:
+                    recency_score = 1.0  # Very recent (2024-2025)
+                elif age <= 2:
+                    recency_score = 0.9  # Recent (2023)
+                elif age <= 3:
+                    recency_score = 0.8  # Contemporary (2022)
+                elif age <= 5:
+                    recency_score = 0.7  # Modern (2020-2021)
+                elif age <= 10:
+                    recency_score = 0.5  # Established (2015-2019)
+                else:
+                    recency_score = 0.2  # Historical (pre-2015)
+            
+            # Quality/relevance score from pre-filtering
+            quality_score = paper.get('_pre_filter_score', 0.5)
+            
+            # Citation bonus for recent high-impact work
+            citation_bonus = 0.0
+            citations = paper.get('citations', 0)
+            if citations and citations != 'N/A':
+                try:
+                    cite_count = int(citations)
+                    if year >= 2020:  # Only boost recent papers with citations
+                        if cite_count > 100:
+                            citation_bonus = 0.2
+                        elif cite_count > 50:
+                            citation_bonus = 0.15
+                        elif cite_count > 20:
+                            citation_bonus = 0.1
+                        elif cite_count > 5:
+                            citation_bonus = 0.05
+                except:
+                    pass
+            
+            # Venue quality indicator (if available)
+            venue_bonus = 0.0
+            venue = paper.get('venue', '').lower()
+            if any(term in venue for term in ['nature', 'science', 'cell', 'nejm', 'lancet']):
+                venue_bonus = 0.15
+            elif any(term in venue for term in ['ieee', 'acm', 'springer', 'elsevier']):
+                venue_bonus = 0.1
+            
+            # Combine scores: recency (50%) + quality (30%) + citations (15%) + venue (5%)
+            final_score = (recency_score * 0.5) + (quality_score * 0.3) + (citation_bonus * 0.15) + (venue_bonus * 0.05)
+            
+            # Store components for explanation generation
+            paper['_year_score_components'] = {
+                'recency': recency_score,
+                'quality': quality_score,
+                'citation_bonus': citation_bonus,
+                'venue_bonus': venue_bonus,
+                'final': final_score,
+                'year': year
+            }
+            
+            return final_score
+        
+        # Calculate scores and sort by combined relevance-recency score
+        for paper in papers:
+            paper['_year_relevance_score'] = calculate_year_relevance_score(paper)
+        
+        # Sort by combined score (primary) and then by year (secondary)
+        sorted_papers = sorted(papers, 
+                             key=lambda p: (p.get('_year_relevance_score', 0), get_year(p)), 
+                             reverse=True)
+        
+        # Add custom explanations tailored to each paper's content and ranking factors
         for i, paper in enumerate(sorted_papers[:limit]):
             year = get_year(paper)
             rank = i + 1
             title = paper.get('title', '')
             authors = paper.get('authors', '')
             abstract = paper.get('abstract', '')
+            score_components = paper.get('_year_score_components', {})
             
-            # Generate custom explanation based on paper's actual content
-            explanation = self._generate_year_explanation(
+            # Generate custom explanation based on paper's actual content and ranking factors
+            explanation = self._generate_enhanced_year_explanation(
                 paper=paper,
                 rank=rank,
                 year=year,
                 title=title,
                 authors=authors,
-                abstract=abstract
+                abstract=abstract,
+                score_components=score_components
             )
             
             paper['explanation'] = explanation
@@ -588,7 +859,10 @@ class PaperService:
         explanation_parts = []
         
         # Start with ranking and citation count
-        explanation_parts.append(f"Ranked #{rank} with {citations:,} citations")
+        if citations > 0:
+            explanation_parts.append(f"Ranked #{rank} with {citations:,} citations")
+        else:
+            explanation_parts.append(f"Ranked #{rank} (limited citation data available)")
         
         # Add content-specific reasoning
         if content_indicators:
@@ -635,8 +909,16 @@ class PaperService:
             impact_note = "demonstrating significant scholarly impact"
         elif citations > 1000:
             impact_note = "showing strong academic recognition"
+        elif citations > 100:
+            impact_note = "reflecting solid scholarly interest"
+        elif citations > 0:
+            impact_note = "representing emerging academic contribution"
         else:
-            impact_note = "reflecting growing scholarly interest"
+            # For papers without citation data, focus on other qualities
+            if any(term in title_lower for term in ['2024', '2025']) or (year and int(year) >= 2024):
+                impact_note = "representing recent contribution with potential for future impact"
+            else:
+                impact_note = "selected for topical relevance and research quality"
         
         return f"{base_explanation}, {impact_note}."
     
@@ -717,3 +999,155 @@ class PaperService:
         value_prop = f"This work provides {recency_value} essential for understanding current research directions"
         
         return f"{base_explanation}. {value_prop}."
+    
+    def _generate_enhanced_year_explanation(self, paper: Dict[str, Any], rank: int, year: int,
+                                          title: str, authors: str, abstract: str, 
+                                          score_components: Dict[str, Any]) -> str:
+        """Generate enhanced explanation for year-based ranking with relevance factors"""
+        
+        current_year = 2025
+        
+        # Extract scoring components
+        recency_score = score_components.get('recency', 0)
+        quality_score = score_components.get('quality', 0)
+        citation_bonus = score_components.get('citation_bonus', 0)
+        venue_bonus = score_components.get('venue_bonus', 0)
+        final_score = score_components.get('final', 0)
+        
+        # Determine primary ranking factor
+        primary_factor = ""
+        if recency_score >= 0.9 and citation_bonus > 0.1:
+            primary_factor = "exceptional recent impact"
+        elif recency_score >= 0.9:
+            primary_factor = "cutting-edge recency"
+        elif citation_bonus > 0.15:
+            primary_factor = "high-impact contemporary work"
+        elif venue_bonus > 0.1:
+            primary_factor = "prestigious venue publication"
+        elif quality_score > 0.7:
+            primary_factor = "high relevance and quality"
+        else:
+            primary_factor = "balanced recency and relevance"
+        
+        # Extract content characteristics
+        content_type = ""
+        title_lower = title.lower()
+        
+        if any(term in title_lower for term in ['survey', 'review', 'comprehensive', 'overview']):
+            content_type = "comprehensive survey"
+        elif any(term in title_lower for term in ['novel', 'new', 'introducing', 'breakthrough']):
+            content_type = "novel research"
+        elif any(term in title_lower for term in ['analysis', 'study', 'investigation', 'evaluation']):
+            content_type = "analytical study"
+        elif any(term in title_lower for term in ['framework', 'method', 'approach', 'algorithm']):
+            content_type = "methodological contribution"
+        elif any(term in title_lower for term in ['application', 'implementation', 'system']):
+            content_type = "practical application"
+        else:
+            content_type = "research work"
+        
+        # Analyze research domain with enhanced detection
+        domain_insights = []
+        combined_text = f"{title} {abstract}".lower()
+        
+        # AI/ML domains
+        if any(term in combined_text for term in ['transformer', 'attention', 'bert', 'gpt', 'llm', 'large language model']):
+            domain_insights.append('LLM/Transformers')
+        elif any(term in combined_text for term in ['neural network', 'deep learning', 'cnn', 'rnn']):
+            domain_insights.append('deep learning')
+        elif any(term in combined_text for term in ['machine learning', 'ml', 'artificial intelligence', 'ai']):
+            domain_insights.append('AI/ML')
+        
+        # Specific application domains
+        if any(term in combined_text for term in ['computer vision', 'image recognition', 'visual', 'opencv']):
+            domain_insights.append('computer vision')
+        if any(term in combined_text for term in ['natural language processing', 'nlp', 'text analysis', 'sentiment']):
+            domain_insights.append('NLP')
+        if any(term in combined_text for term in ['healthcare', 'medical', 'clinical', 'biomedical', 'drug']):
+            domain_insights.append('healthcare AI')
+        if any(term in combined_text for term in ['robotics', 'autonomous', 'control', 'navigation']):
+            domain_insights.append('robotics')
+        if any(term in combined_text for term in ['quantum', 'blockchain', 'cryptocurrency', 'web3']):
+            domain_insights.append('emerging tech')
+        
+        # Determine temporal context with enhanced granularity
+        age = current_year - year
+        if age <= 0:
+            temporal_context = "cutting-edge 2025 research"
+            impact_timeline = "representing the absolute latest developments"
+        elif age == 1:
+            temporal_context = "very recent 2024 work"
+            impact_timeline = "capturing immediate research trends"
+        elif age == 2:
+            temporal_context = "recent 2023 contribution"
+            impact_timeline = "reflecting current methodological advances"
+        elif age <= 3:
+            temporal_context = "contemporary research"
+            impact_timeline = "providing modern technical perspectives"
+        elif age <= 5:
+            temporal_context = "established recent work"
+            impact_timeline = "offering proven contemporary approaches"
+        else:
+            temporal_context = "foundational work"
+            impact_timeline = "contributing established principles"
+        
+        # Build sophisticated explanation
+        explanation_parts = []
+        
+        # Primary ranking statement
+        explanation_parts.append(f"Ranked #{rank} for {primary_factor}")
+        
+        # Content and domain context
+        if domain_insights:
+            if len(domain_insights) == 1:
+                explanation_parts.append(f"as {year} {content_type} in {domain_insights[0]}")
+            else:
+                explanation_parts.append(f"as {year} {content_type} bridging {' and '.join(domain_insights[:2])}")
+        else:
+            explanation_parts.append(f"as {year} {content_type}")
+        
+        # Add specific ranking insights based on scoring components
+        ranking_insights = []
+        if citation_bonus > 0.15:
+            citations = paper.get('citations', 0)
+            try:
+                cite_count = int(citations)
+                ranking_insights.append(f"with {cite_count} citations demonstrating immediate impact")
+            except:
+                ranking_insights.append("with notable citation impact")
+        
+        if venue_bonus > 0.1:
+            venue = paper.get('venue', '')
+            if venue:
+                ranking_insights.append(f"published in prestigious {venue}")
+            else:
+                ranking_insights.append("from high-quality publication venue")
+        
+        if quality_score > 0.8:
+            ranking_insights.append("featuring exceptional topical relevance")
+        elif quality_score > 0.6:
+            ranking_insights.append("with strong content quality")
+        
+        # Combine explanation parts
+        base_explanation = " ".join(explanation_parts)
+        
+        if ranking_insights:
+            if len(ranking_insights) == 1:
+                base_explanation += f", {ranking_insights[0]}"
+            else:
+                base_explanation += f", {ranking_insights[0]} and {ranking_insights[1]}"
+        
+        # Add temporal significance and value proposition
+        value_proposition = f"This {temporal_context} is essential for {impact_timeline} in the field"
+        
+        # Add recommendation based on final score
+        if final_score > 0.9:
+            recommendation = "representing must-read contemporary research"
+        elif final_score > 0.8:
+            recommendation = "offering valuable recent insights"
+        elif final_score > 0.7:
+            recommendation = "providing relevant current perspectives"
+        else:
+            recommendation = "contributing to the current research landscape"
+        
+        return f"{base_explanation}. {value_proposition}, {recommendation}."

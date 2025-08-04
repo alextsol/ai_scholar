@@ -36,7 +36,8 @@ class SearchResult:
             "backends_used": self.backends_used,
             "ai_provider_used": self.ai_provider_used,
             "cache_hit": self.cache_hit,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "aggregation_stats": self.aggregation_stats
         }
     
     @classmethod
@@ -57,7 +58,8 @@ class SearchResult:
             backends_used=data.get('backends_used', []),
             ai_provider_used=data.get('ai_provider_used'),
             cache_hit=data.get('cache_hit', False),
-            created_at=created_at
+            created_at=created_at,
+            aggregation_stats=data.get('aggregation_stats')
         )
     
     def get_top_papers(self, count: int) -> List[Paper]:

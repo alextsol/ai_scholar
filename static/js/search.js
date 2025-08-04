@@ -46,6 +46,12 @@ class SearchPage {
         if (modeSelect) {
             modeSelect.addEventListener('change', this.handleModeChange.bind(this));
         }
+        
+        // Ranking mode change listener
+        const rankingModeSelect = document.getElementById('ranking_mode');
+        if (rankingModeSelect) {
+            rankingModeSelect.addEventListener('change', this.updateRankingHelpText.bind(this));
+        }
     }
 
     async handleSearch() {
@@ -280,6 +286,28 @@ class SearchPage {
         } else {
             if (aiResultsGroup) aiResultsGroup.style.display = 'none';
         }
+        
+        // Update ranking mode help text if available
+        this.updateRankingHelpText();
+    }
+    
+    /**
+     * Update ranking mode help text
+     */
+    updateRankingHelpText() {
+        const rankingSelect = document.getElementById('ranking_mode');
+        const helpText = document.getElementById('ranking-help-text');
+        
+        if (!rankingSelect || !helpText) return;
+        
+        const mode = rankingSelect.value;
+        const helpTexts = {
+            'ai': 'AI Ranking: Uses AI to rank papers by relevance to your query',
+            'citations': 'Most Cited: Focuses on providers with citation data, optimized to find highly cited papers',
+            'year': 'Publication Year: Orders papers by publication date (newest first)'
+        };
+        
+        helpText.textContent = helpTexts[mode] || helpTexts['ai'];
     }
 
     /**

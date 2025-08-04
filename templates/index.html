@@ -164,7 +164,8 @@
                             </label>
                             <select name="ranking_mode" id="rankingMode" class="form-select">
                                 <option value="ai" {% if ranking_mode == 'ai' %}selected{% endif %}>AI Relevance Ranking</option>
-                                <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited First</option>
+                                <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited Papers</option>
+                                <option value="year" {% if ranking_mode == 'year' %}selected{% endif %}>Newest Papers First</option>
                             </select>
                         </div>
 

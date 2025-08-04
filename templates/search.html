@@ -3,8 +3,26 @@
 {% block title %}Advanced Search - AI Scholar{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
-{% endblock %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">                            <div class="col-md-6">
+                                <h6>Provider Collection:</h6>
+                                <ul class="list-unstyled">
+                                    {% for provider, stats in aggregation_stats.providers_used.items() %}
+                                    <li>
+                                        <strong>{{ provider.replace('_', ' ').title() }}:</strong>
+                                        {{ stats.raw_count }} → {{ stats.after_filter }} papers
+                                        {% if ranking_mode == 'citations' and provider in ['semantic_scholar', 'crossref', 'openalex'] %}
+                                        <span class="badge bg-success ms-1">Citation-Enhanced</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% if ranking_mode == 'citations' %}
+                                <small class="text-info">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    ArXiv excluded in citation mode (no citation data)
+                                </small>
+                                {% endif %}
+                            </div>k %}
 
 {% block body_class %}search-page{% endblock %}
 
@@ -120,9 +138,21 @@
                     </label>
                     <select id="ranking_mode" name="ranking_mode">
                         <option value="ai" {% if ranking_mode == 'ai' %}selected{% endif %}>AI Ranking</option>
-                        <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Citation Count</option>
-                        <option value="year" {% if ranking_mode == 'year' %}selected{% endif %}>Publication Year</option>
+                        <option value="citations" {% if ranking_mode == 'citations' %}selected{% endif %}>Most Cited Papers</option>
+                        <option value="year" {% if ranking_mode == 'year' %}selected{% endif %}>Newest Papers First</option>
                     </select>
+                    <small class="form-text text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <span id="ranking-help-text">
+                            {% if ranking_mode == 'citations' %}
+                            Most Cited: Focuses on providers with citation data, optimized to find highly cited papers
+                            {% elif ranking_mode == 'year' %}
+                            Newest Papers: Optimized for recent and relevant papers using all providers with intelligent recency-relevance scoring
+                            {% else %}
+                            AI Ranking: Uses AI to rank papers by relevance to your query
+                            {% endif %}
+                        </span>
+                    </small>
                 </div>
             </div>
             
@@ -136,13 +166,16 @@
     <!-- Results Section -->
     {% if results %}
     <div class="results-container animate-on-scroll">
-        <!-- Aggregation Statistics (for aggregate mode) -->
+                        <!-- Aggregation Statistics (for aggregate mode) -->
         {% if mode == 'aggregate' and aggregation_stats %}
         <div class="aggregation-stats mb-4">
             <div class="card">
                 <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-chart-bar me-2"></i>Aggregation Process Summary
+                        {% if ranking_mode == 'citations' %}
+                        <span class="badge bg-info ms-2">Citation-Optimized</span>
+                        {% endif %}
                         <button class="btn btn-sm btn-outline-secondary float-end" type="button" 
                                 data-bs-toggle="collapse" data-bs-target="#statsDetails" 
                                 aria-expanded="false" aria-controls="statsDetails">
