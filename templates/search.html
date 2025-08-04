@@ -134,7 +134,23 @@
     <div class="results-container animate-on-scroll">
         <div class="results-header">
             <h2><i class="fas fa-file-alt me-2"></i>Search Results</h2>
-            <span class="results-count">{{ papersCount }} papers found</span>
+            <div class="results-controls">
+                <span class="results-count">{{ papersCount }} papers found</span>
+                <div class="filter-controls">
+                    <label for="result-filter" class="filter-label">
+                        <i class="fas fa-filter me-1"></i>Sort by:
+                    </label>
+                    <select id="result-filter" class="filter-select">
+                        <option value="default">Default Order</option>
+                        <option value="citations">Citations (High to Low)</option>
+                        <option value="year">Year (Newest First)</option>
+                        <option value="title">Title (A-Z)</option>
+                        {% if mode == 'aggregate' %}
+                        <option value="provider">Provider</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
         </div>
         
         {% for result_group in results %}

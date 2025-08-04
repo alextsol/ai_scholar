@@ -170,13 +170,26 @@
     padding: var(--spacing-lg);
     border-radius: var(--border-radius);
     margin-bottom: var(--spacing-lg);
-    text-align: center;
+}
+
+.result-stats .stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .result-stats h4 {
     color: var(--primary-color);
     font-weight: 600;
-    margin-bottom: var(--spacing-md);
+    margin: 0;
+}
+
+.result-stats p {
+    text-align: center;
+    margin: 0;
 }
 
 .result-grid {

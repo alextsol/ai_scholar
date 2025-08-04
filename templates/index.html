@@ -219,7 +219,23 @@
     {% if results %}
     <div class="results-section animate-on-scroll">
         <div class="result-stats">
-            <h4><i class="fas fa-chart-bar me-2"></i>Search Results</h4>
+            <div class="stats-header">
+                <h4><i class="fas fa-chart-bar me-2"></i>Search Results</h4>
+                <div class="filter-controls">
+                    <label for="result-filter" class="filter-label">
+                        <i class="fas fa-filter me-1"></i>Sort by:
+                    </label>
+                    <select id="result-filter" class="filter-select">
+                        <option value="default">Default Order</option>
+                        <option value="citations">Citations (High to Low)</option>
+                        <option value="year">Year (Newest First)</option>
+                        <option value="title">Title (A-Z)</option>
+                        {% if mode == 'aggregate' %}
+                        <option value="provider">Provider</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
             <p>Found <strong>{{ papersCount }}</strong> academic papers matching your query</p>
         </div>
 
