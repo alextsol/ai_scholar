@@ -107,7 +107,7 @@ class GeminiProvider(IAIProvider):
         
         response = self.generate_content(ranking_prompt, "ranking")
         if not response:
-            return papers[:limit]  # Fallback to original order
+            return self._fallback_ranking(papers, limit)
         
         # Parse AI response and return ranked papers
         return self._parse_ranking_response(response, papers, limit)
@@ -186,39 +186,51 @@ Abstract: {abstract}
         return f"""
 You are an expert academic research assistant with deep knowledge across multiple scientific domains. Your task is to intelligently rank papers based on their relevance to the query: "{query}"
 
-RANKING CRITERIA (in order of importance):
-1. SEMANTIC RELEVANCE (40%): How directly and comprehensively does the paper address the query topic?
+CONTEXT: These papers have been collected from multiple academic sources (CrossRef, arXiv, Semantic Scholar, CORE, OpenAlex), deduplicated, and pre-filtered for quality. Your role is to provide the final AI-powered ranking with detailed explanations.
+
+RANKING CRITERIA (adaptive weighting based on paper source):
+1. SEMANTIC RELEVANCE (45%): How directly and comprehensively does the paper address the query topic?
    - Look for exact keyword matches in title and abstract
    - Consider conceptual relevance and related concepts
    - Prefer papers that cover the core aspects of the query
 
-2. RESEARCH QUALITY (25%): Assess the rigor and methodology
+2. RESEARCH QUALITY (30%): Assess the rigor and methodology
    - Clear research questions and hypotheses
    - Appropriate methodology and experimental design
    - Comprehensive literature review and citations
    - Statistical significance and validation
 
-3. IMPACT AND CITATIONS (20%): Consider academic influence
-   - Citation count relative to publication year
-   - High citations indicate peer recognition
-   - Recent papers with growing citation trends
-
-4. RECENCY AND NOVELTY (10%): Balance current relevance
-   - Recent papers (2020+) for emerging topics
-   - Seminal older papers for established concepts
+3. NOVELTY AND RECENCY (15%): Balance current relevance and innovation
+   - Recent papers (2020+) for emerging topics and cutting-edge research
    - Novel approaches or breakthrough findings
+   - Innovative methodologies or fresh perspectives
+   - For arXiv papers: Consider potential impact and innovation over citation count
 
-5. COMPLETENESS (5%): Comprehensive coverage
-   - Detailed abstracts indicating thorough work
-   - Multiple aspects of the topic covered
-   - Practical applications or implications
+4. IMPACT INDICATORS (10%): Consider available influence metrics
+   - For papers with citations: Citation count relative to publication year
+   - For arXiv papers: Focus on methodological innovation, comprehensive evaluation, and potential significance
+   - High-quality venues and author reputation when available
+   - Practical applications and reproducibility
+
+SPECIAL HANDLING FOR ARXIV PAPERS:
+- arXiv papers represent cutting-edge, often unpublished research
+- Lack of citations should NOT penalize ranking - instead focus on:
+  * Innovation and novelty of approach
+  * Comprehensiveness of experimental evaluation
+  * Clarity of methodology and potential impact
+  * Relevance to current research trends
+- Weight criteria as: Semantic Relevance (50%), Research Quality (35%), Novelty (15%), Impact (0%)
 
 ANALYSIS INSTRUCTIONS:
 - Read each abstract carefully to understand the actual contribution
 - Consider the query context - what would be most useful for someone researching "{query}"?
-- Avoid bias toward any particular source or publication year
+- DO NOT bias against arXiv papers due to lack of citations - they often contain the most recent breakthroughs
+- Balance established, well-cited work with innovative recent research
+- For arXiv papers: Evaluate potential impact, methodological rigor, and innovation
+- For published papers: Consider both citation impact and research quality
 - Look for papers that would provide the best learning path for the topic
 - Consider both theoretical foundations and practical applications
+- Ensure a good mix of established knowledge and cutting-edge developments
 
 PAPERS TO ANALYZE:
 {papers_text}
@@ -226,11 +238,19 @@ PAPERS TO ANALYZE:
 REQUIRED OUTPUT:
 Return EXACTLY the top {limit} papers ranked by overall relevance score. For each paper, provide:
 1. A relevance score (1-100) based on the criteria above
-2. A concise, specific explanation (1-2 sentences) that explains:
+2. A detailed, specific explanation (1-2 sentences) that explains:
    - WHY this paper is relevant to "{query}" (be specific about connections)
-   - WHAT unique contribution it makes that justifies its ranking
+   - WHAT unique contribution, methodology, or findings it provides
+   - HOW it advances understanding or practical application of the topic
    
-Keep explanations concise but substantive - around 50-100 words maximum.
+EXPLANATION REQUIREMENTS:
+- Make explanations SPECIFIC to the paper's actual content and contribution
+- Reference specific methodologies, findings, or innovations mentioned in abstracts
+- Avoid generic phrases like "this paper explores", "the authors investigate", or "this study examines"
+- Connect the paper's contribution directly to the search query
+- Explain the practical value for someone researching the topic
+- Use concrete details from the abstract when available
+- Be insightful and substantive, not just descriptive
 
 Format your response as a valid JSON array:
 [
@@ -238,26 +258,22 @@ Format your response as a valid JSON array:
     "rank": 1,
     "title": "Exact title from the paper list",
     "relevance_score": 95,
-    "explanation": "This paper is highly relevant to '{query}' because [specific reason related to query]. The key contribution of [specific innovation/method] makes it essential for understanding [specific aspect]."
+    "explanation": "This paper is highly relevant to '{query}' because [specific reason based on abstract content]. The [specific methodology/innovation/finding] provides [practical benefit/theoretical advancement] that is essential for [specific application]."
   }},
   {{
     "rank": 2,
     "title": "Exact title from the paper list", 
     "relevance_score": 88,
-    "explanation": "This work advances '{query}' through [specific contribution/approach]. Its [specific methodology/findings] provides crucial insights for [specific application/understanding]."
+    "explanation": "This work advances '{query}' through [specific approach from abstract]. The [specific findings/techniques] offer [concrete insights/tools] for [practical application]."
   }}
 ]
 
-IMPORTANT: 
+CRITICAL REQUIREMENTS: 
 - Use the EXACT title as provided in the paper list
 - Keep explanations to 1-2 sentences (50-100 words maximum)
-- Make explanations SPECIFIC to the paper's actual content and contribution
-- Avoid generic phrases like "this paper explores" or "the authors investigate"
-- Reference specific methodologies, findings, or innovations mentioned in abstracts
-- Explain the practical value for someone researching the topic
-- Connect the paper's contribution directly to the search query
+- Base explanations on ACTUAL content from abstracts, not assumptions
 - Ensure relevance scores reflect genuine quality and relevance differences
-]
+- Every explanation must be unique and specific to that paper's contribution
 """
     
     def _parse_ranking_response(self, response: str, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
@@ -269,7 +285,8 @@ IMPORTANT:
             # Try to extract JSON from response
             json_match = re.search(r'\[.*\]', response, re.DOTALL)
             if json_match:
-                ranking_data = json.loads(json_match.group())
+                json_text = json_match.group()
+                ranking_data = json.loads(json_text)
                 
                 ranked_papers = []
                 found_titles = set()
@@ -305,9 +322,12 @@ IMPORTANT:
                 if len(ranked_papers) >= min(3, limit):  # Need at least 3 good matches or all requested
                     return ranked_papers
             
+        except json.JSONDecodeError as e:
+            # JSON parsing failed - could be malformed response
+            pass
         except Exception as e:
-            # Log the error for debugging
-            print(f"AI ranking parse error: {e}")
+            # Other parsing errors
+            pass
         
         # Enhanced fallback: rank by a combination of factors
         return self._fallback_ranking(papers, limit)
@@ -346,44 +366,96 @@ IMPORTANT:
         return intersection / union if union > 0 else 0.0
     
     def _fallback_ranking(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Intelligent fallback ranking when AI parsing fails"""
+        """Intelligent fallback ranking when AI parsing fails - balanced for all sources"""
         scored_papers = []
         
         for paper in papers:
             score = 0
+            source = paper.get('source', '').lower()
             
-            # Citation score (0-40 points)
-            citations = paper.get('citations', 0)
-            if citations and citations != 'N/A':
-                try:
-                    cite_count = int(citations)
-                    score += min(40, cite_count / 10)  # Max 40 points, 1 point per 10 citations
-                except:
-                    pass
+            # Source-adaptive scoring strategy
+            is_arxiv = source == 'arxiv'
             
-            # Recency score (0-30 points)
-            year = paper.get('year')
-            if year and year != 'N/A':
-                try:
-                    pub_year = int(year)
-                    current_year = 2024
-                    age = current_year - pub_year
-                    if age <= 5:
-                        score += 30 - (age * 5)  # Recent papers get more points
-                    elif age <= 10:
+            if is_arxiv:
+                # For arXiv papers: Focus on recency, quality, and innovation potential
+                
+                # Recency score (0-40 points) - arXiv papers benefit more from being recent
+                year = paper.get('year')
+                if year and year != 'N/A':
+                    try:
+                        pub_year = int(year)
+                        current_year = 2024
+                        age = current_year - pub_year
+                        if age <= 2:
+                            score += 40  # Very recent arXiv papers
+                        elif age <= 5:
+                            score += 35 - (age * 5)
+                        elif age <= 10:
+                            score += 15
+                    except:
+                        pass
+                
+                # Quality indicators (0-35 points)
+                abstract = paper.get('abstract', '')
+                if abstract and abstract != 'N/A':
+                    if len(abstract) > 300:
+                        score += 35  # Comprehensive abstract
+                    elif len(abstract) > 150:
+                        score += 25
+                    elif len(abstract) > 75:
+                        score += 15
+                
+                # Innovation bonus for arXiv (0-25 points)
+                title = paper.get('title', '').lower()
+                innovation_keywords = ['novel', 'new', 'improved', 'efficient', 'optimal', 'advanced', 'sota', 'state-of-the-art']
+                innovation_score = sum(5 for keyword in innovation_keywords if keyword in title)
+                score += min(25, innovation_score)
+                
+            else:
+                # For published papers: Balance citations with recency and quality
+                
+                # Citation score (0-30 points) - reduced weight
+                citations = paper.get('citations', 0)
+                if citations and citations != 'N/A':
+                    try:
+                        cite_count = int(citations)
+                        score += min(30, cite_count / 15)  # Reduced citation weight
+                    except:
+                        pass
+                
+                # Recency score (0-25 points)
+                year = paper.get('year')
+                if year and year != 'N/A':
+                    try:
+                        pub_year = int(year)
+                        current_year = 2024
+                        age = current_year - pub_year
+                        if age <= 5:
+                            score += 25 - (age * 4)
+                        elif age <= 10:
+                            score += 10
+                    except:
+                        pass
+                
+                # Quality score (0-25 points)
+                abstract = paper.get('abstract', '')
+                if abstract and abstract != 'N/A':
+                    if len(abstract) > 200:
+                        score += 25
+                    elif len(abstract) > 100:
+                        score += 15
+                    elif len(abstract) > 50:
                         score += 10
-                except:
-                    pass
+                
+                # Venue quality bonus (0-20 points)
+                if source in ['semantic_scholar', 'crossref']:
+                    score += 20  # Established publication venues
+                elif source == 'openalex':
+                    score += 15
+                elif source == 'core':
+                    score += 10
             
-            # Abstract quality score (0-20 points)
-            abstract = paper.get('abstract', '')
-            if abstract and abstract != 'N/A' and len(abstract) > 100:
-                score += 20
-            elif abstract and len(abstract) > 50:
-                score += 10
-            
-            # Title relevance (0-10 points) - basic keyword matching would go here
-            # For now, just add a small random component to break ties
+            # Title relevance boost for all papers (0-10 points)
             import random
             score += random.uniform(0, 5)
             
@@ -395,52 +467,74 @@ IMPORTANT:
         fallback_papers = []
         for i, (score, paper) in enumerate(scored_papers[:limit]):
             paper_copy = paper.copy()
+            source = paper.get('source', '').lower()
             
-            # Create more specific explanation based on paper attributes
+            # Create source-aware explanations
             explanation_parts = []
+            source = paper.get('source', '').lower()
+            is_arxiv = source == 'arxiv'
             
-            # Add citation-based reasoning
-            citations = paper.get('citations', 0) or 0
-            if citations > 1000:
-                explanation_parts.append(f"highly cited work ({citations:,} citations) indicating significant impact")
-            elif citations > 100:
-                explanation_parts.append(f"well-cited research ({citations} citations) showing academic recognition")
-            elif citations > 10:
-                explanation_parts.append(f"moderately cited ({citations} citations)")
+            if is_arxiv:
+                # ArXiv-specific explanation logic
+                year = paper.get('year')
+                if year and year >= 2022:
+                    explanation_parts.append("cutting-edge preprint with latest research developments")
+                elif year and year >= 2020:
+                    explanation_parts.append("recent preprint representing current research trends")
+                else:
+                    explanation_parts.append("preprint contributing to the research landscape")
+                
+                # Quality indicators for arXiv
+                abstract = paper.get('abstract', '')
+                if abstract and len(abstract) > 300:
+                    explanation_parts.append("comprehensive methodology and thorough experimental design")
+                elif abstract and len(abstract) > 150:
+                    explanation_parts.append("detailed technical approach")
+                else:
+                    explanation_parts.append("novel research contribution")
+                
+                explanation_parts.append("from arXiv preprint server showcasing innovation")
+                
             else:
-                explanation_parts.append("emerging research")
-            
-            # Add recency reasoning
-            year = paper.get('year')
-            if year:
-                if year >= 2022:
+                # Published paper explanation logic
+                citations = paper.get('citations', 0) or 0
+                if citations > 1000:
+                    explanation_parts.append(f"highly cited work ({citations:,} citations) with significant academic impact")
+                elif citations > 100:
+                    explanation_parts.append(f"well-cited research ({citations} citations) with established recognition")
+                elif citations > 10:
+                    explanation_parts.append(f"cited work ({citations} citations) with academic validation")
+                else:
+                    explanation_parts.append("emerging research with growing potential")
+                
+                # Add recency reasoning for published papers
+                year = paper.get('year')
+                if year and year >= 2022:
                     explanation_parts.append("recent publication with current relevance")
-                elif year >= 2018:
+                elif year and year >= 2018:
                     explanation_parts.append("relatively recent work")
-                elif year >= 2010:
+                elif year and year >= 2010:
                     explanation_parts.append("established research")
                 else:
                     explanation_parts.append("foundational work")
+                
+                # Add source credibility
+                if source in ['semantic_scholar', 'crossref']:
+                    explanation_parts.append("from established academic publication")
+                elif source == 'openalex':
+                    explanation_parts.append("from comprehensive scholarly database")
+                elif source == 'core':
+                    explanation_parts.append("from global research repository")
             
-            # Add quality indicators
-            abstract = paper.get('abstract', '')
-            if abstract and len(abstract) > 200:
-                explanation_parts.append("comprehensive abstract indicating thorough research")
-            elif abstract and len(abstract) > 100:
-                explanation_parts.append("detailed abstract")
+            # Combine into explanation (make it more balanced and informative)
+            if is_arxiv:
+                explanation = f"Ranked #{i+1} for innovation potential: {explanation_parts[0]}"
+            else:
+                explanation = f"Ranked #{i+1} by academic impact: {explanation_parts[0]}"
             
-            # Add source credibility
-            source = paper.get('source', '').lower()
-            if source in ['crossref', 'semantic_scholar']:
-                explanation_parts.append("from reputable academic source")
-            elif source == 'arxiv':
-                explanation_parts.append("from arXiv preprint server")
-            
-            # Combine into explanation (make it more concise)
-            explanation = f"Ranked #{i+1} by algorithmic relevance: {explanation_parts[0]}"
             if len(explanation_parts) > 1:
-                explanation += f", {explanation_parts[1]}"  # Only add one more aspect
-            explanation += f". Relevance score: {score:.1f}/100."
+                explanation += f", {explanation_parts[1]}"  # Add second most important aspect
+            explanation += f". Balanced relevance score: {score:.1f}/100."
             
             paper_copy['explanation'] = explanation
             paper_copy['ai_relevance_score'] = int(score)

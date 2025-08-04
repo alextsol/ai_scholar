@@ -260,6 +260,35 @@
     font-weight: 600;
 }
 
+/* Ranking Mode Explanations */
+#ranking-mode-explanation {
+    margin-top: var(--spacing-sm);
+}
+
+#ranking-mode-explanation > div {
+    background: rgba(23, 162, 184, 0.1);
+    border: 1px solid rgba(23, 162, 184, 0.3);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+#ai-ranking-explanation {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: rgba(40, 167, 69, 0.3);
+}
+
+#citations-ranking-explanation {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+#year-ranking-explanation {
+    background: rgba(108, 117, 125, 0.1);
+    border-color: rgba(108, 117, 125, 0.3);
+}
+
 /* Provider Status */
 .provider-status-mini {
     display: flex;

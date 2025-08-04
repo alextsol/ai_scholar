@@ -121,8 +121,15 @@ class IndexPage {
             input.addEventListener('change', this.updateDynamicGroups.bind(this));
         });
 
+        // Setup ranking mode change handler
+        const rankingModeSelect = document.getElementById('rankingMode');
+        if (rankingModeSelect) {
+            rankingModeSelect.addEventListener('change', this.updateRankingModeExplanation.bind(this));
+        }
+
         // Initial setup
         this.updateDynamicGroups();
+        this.updateRankingModeExplanation();
     }
 
     updateDynamicGroups() {
@@ -141,6 +148,38 @@ class IndexPage {
             this.hideGroup(rankingModeGroup);
             this.showGroup(resultLimitGroup);
             this.hideGroup(aiResultLimitGroup);
+        }
+        
+        // Update ranking explanation when mode changes
+        this.updateRankingModeExplanation();
+    }
+
+    updateRankingModeExplanation() {
+        const rankingModeSelect = document.getElementById('rankingMode');
+        if (!rankingModeSelect) return;
+        
+        const selectedRanking = rankingModeSelect.value;
+        
+        // Hide all explanations
+        const aiExplanation = document.getElementById('ai-ranking-explanation');
+        const citationsExplanation = document.getElementById('citations-ranking-explanation');
+        const yearExplanation = document.getElementById('year-ranking-explanation');
+        
+        if (aiExplanation) aiExplanation.style.display = 'none';
+        if (citationsExplanation) citationsExplanation.style.display = 'none';
+        if (yearExplanation) yearExplanation.style.display = 'none';
+        
+        // Show the selected explanation
+        switch (selectedRanking) {
+            case 'ai':
+                if (aiExplanation) aiExplanation.style.display = 'block';
+                break;
+            case 'citations':
+                if (citationsExplanation) citationsExplanation.style.display = 'block';
+                break;
+            case 'year':
+                if (yearExplanation) yearExplanation.style.display = 'block';
+                break;
         }
     }
 
