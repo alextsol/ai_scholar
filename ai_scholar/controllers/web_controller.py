@@ -25,6 +25,7 @@ class WebController:
         self.blueprint.add_url_rule('/', 'index', login_required(self.index), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
         self.blueprint.add_url_rule('/search', 'search_page', login_required(self.search_page), methods=['GET', 'POST'])
+        self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
         
         # History API endpoints for sidebar functionality (keep these working)
         self.blueprint.add_url_rule('/history/delete/<int:search_id>', 'history_delete', login_required(self.delete_history_item), methods=['POST'])
@@ -306,6 +307,26 @@ class WebController:
             db.session.rollback()
             # Silently handle history save errors to not disrupt user experience
             pass
+
+    def history(self):
+        """Display full search history page"""
+        try:
+            # Get all searches for authenticated user with pagination
+            page = request.args.get('page', 1, type=int)
+            per_page = 20
+            
+            searches = db.session.query(SearchHistory).filter_by(
+                user_id=current_user.id
+            ).order_by(SearchHistory.created_at.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            
+            return render_template('history.html', searches=searches)
+            
+        except Exception as e:
+            logger.error(f"Error loading search history: {e}")
+            flash('Error loading search history', 'error')
+            return redirect(url_for('web_main.index'))
 
     def delete_history_item(self, search_id: int):
         """API endpoint to delete a specific search history item"""
