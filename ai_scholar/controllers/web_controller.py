@@ -53,8 +53,8 @@ class WebController:
             'mode': mode_param,
             'min_year': '',
             'max_year': '',
-            'result_limit': 100,
-            'ai_result_limit': 10,
+            'result_limit': 50,
+            'ai_result_limit': 50,
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
@@ -68,8 +68,8 @@ class WebController:
                 selected_backend = request.form.get('backend', '')
                 min_year = self._parse_int(request.form.get('min_year'))
                 max_year = self._parse_int(request.form.get('max_year'))
-                result_limit = self._parse_int(request.form.get('result_limit'), default=100)
-                ai_result_limit = self._parse_int(request.form.get('ai_result_limit'), default=10)
+                result_limit = self._parse_int(request.form.get('result_limit'), default=50)
+                ai_result_limit = self._parse_int(request.form.get('ai_result_limit'), default=50)
                 ranking_mode = request.form.get('ranking_mode', 'ai')
                 
                 context.update({
@@ -204,8 +204,8 @@ class WebController:
             'mode': mode_param,
             'min_year': '',
             'max_year': '',
-            'result_limit': 100,
-            'ai_result_limit': 10,
+            'result_limit': 50,
+            'ai_result_limit': 50,
             'ranking_mode': 'ai',
             'results': [],
             'papersCount': 0,
