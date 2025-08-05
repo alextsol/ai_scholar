@@ -49,18 +49,11 @@ class PaperService:
             'pre_ranking_applied': False
         }
         
-        # Step 1: Optimize provider selection and limits based on ranking mode
         providers_to_use, per_provider_limits = self._optimize_provider_usage(
             ranking_mode, limit, ai_result_limit
         )
         
-        # Debug logging
-        logger.info(f"Provider optimization for {ranking_mode} mode:")
-        logger.info(f"  Providers to use: {providers_to_use}")
-        logger.info(f"  Per provider limits: {per_provider_limits}")
-        logger.info(f"  Available providers: {list(self.search_providers.keys())}")
-        
-        max_papers_for_ai = Settings.MAX_PAPERS_FOR_AI  # Maximum papers to send to AI model
+        max_papers_for_ai = Settings.MAX_PAPERS_FOR_AI
         
         for backend_name, backend_func in self.search_providers.items():
             # Skip providers that don't support the ranking mode requirements
@@ -127,19 +120,15 @@ class PaperService:
         
         stats['after_pre_filter'] = len(aggregated_papers)
         
-        # Step 2: Apply year filters
         if min_year is not None or max_year is not None:
             aggregated_papers = self._filter_papers_by_year(
                 aggregated_papers, min_year, max_year
             )
         
-        # Step 3: Remove duplicates
         unique_papers = self._remove_duplicates(aggregated_papers)
         stats['after_dedup'] = len(unique_papers)
         
-        # Step 4: Intelligent pre-ranking to reduce AI workload
         if len(unique_papers) > max_papers_for_ai:
-            # Pre-rank using fast heuristics before AI processing
             pre_ranked = self._fast_pre_rank(unique_papers, query, max_papers_for_ai)
             stats['pre_ranking_applied'] = True
             stats['sent_to_ai'] = len(pre_ranked)
@@ -147,7 +136,6 @@ class PaperService:
             pre_ranked = unique_papers
             stats['sent_to_ai'] = len(pre_ranked)
         
-        # Step 5: Final ranking
         ranked_papers = []
         ranking_applied = False
         
@@ -229,16 +217,11 @@ class PaperService:
             # For citation-based ranking, focus on providers with citation data
             providers_to_use = [p for p in all_providers if p in citation_providers]
             
-            # Calculate optimal limits to get maximum results
-            # We want more results for citation ranking since we need to find highly cited papers
-            target_total = max(ai_result_limit * 10, 500)  # Aim for 10x final results or 500, whichever is larger
+            target_total = max(ai_result_limit * 10, 500)
             per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
             
-            # Distribute limits with priority on high-quality providers
-            per_provider_limits = {}
             for provider in providers_to_use:
                 if provider == 'semantic_scholar':
-                    # Semantic Scholar has excellent citation data
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
                 elif provider == 'crossref':
                     # CrossRef is reliable for citation counts
@@ -260,34 +243,27 @@ class PaperService:
             # For newest papers ranking, use all providers but optimize for recency and coverage
             providers_to_use = all_providers
             
-            # Calculate enhanced limits to get maximum recent papers
-            target_total = max(ai_result_limit * 8, 400)  # Aim for 8x final results to find best recent papers
+            target_total = max(ai_result_limit * 8, 400)
             per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
             
-            # Distribute limits with priority on providers good for recent papers
             per_provider_limits = {}
             for provider in providers_to_use:
                 if provider == 'arxiv':
-                    # ArXiv is excellent for very recent preprints and cutting-edge research
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
                 elif provider == 'semantic_scholar':
-                    # Semantic Scholar has good recent coverage and metadata
                     per_provider_limits[provider] = min(per_provider_base * 1.8, Settings.MAX_PER_PROVIDER)
                 elif provider == 'openalex':
-                    # OpenAlex has comprehensive recent coverage
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
                 elif provider == 'crossref':
                     # CrossRef for published recent work
                     per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
                 else:
-                    # Core and others get standard limit
                     per_provider_limits[provider] = per_provider_base
                     
             logger.info(f"Year mode: Using {len(providers_to_use)} providers optimized for recent papers")
             logger.info(f"Provider limits: {per_provider_limits}")
             
         else:
-            # For other ranking modes, use all providers
             providers_to_use = all_providers
             max_per_provider = min(limit, Settings.MAX_PER_PROVIDER)
             per_provider_limits = {provider: max_per_provider for provider in providers_to_use}
@@ -325,11 +301,10 @@ class PaperService:
         
         if isinstance(result, dict):
             if backend_name == "arxiv":
-                # Handle arXiv specific format
-                from ...utils.utils import format_items
+                from ..utils.helpers import format_items
                 papers = format_items(result.get("results", []), result.get("mapping", {}))
             else:
-                from ...utils.utils import generic_requests_search
+                from ..utils.helpers import generic_requests_search
                 papers = generic_requests_search(
                     result.get("url"), 
                     result.get("params"), 
@@ -435,13 +410,10 @@ class PaperService:
                     filtered.append(paper)
                     
             except Exception as e:
-                # Skip papers that cause errors during filtering
-                logger.debug(f"Error filtering paper from {provider}: {str(e)}")
                 continue
         
-        # Sort by score and return top papers from this provider
         filtered.sort(key=lambda x: x.get('_pre_filter_score', 0), reverse=True)
-        max_per_provider = Settings.MAX_PER_PROVIDER_AFTER_FILTER  # Limit per provider to prevent one source dominating
+        max_per_provider = Settings.MAX_PER_PROVIDER_AFTER_FILTER
         return filtered[:max_per_provider]
     
     def _calculate_relevance_score(self, paper: Dict[str, Any], query_words: set) -> float:
@@ -855,7 +827,7 @@ class PaperService:
         }
     
     def _compare_by_relevance(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Compare papers by relevance (placeholder implementation)"""
+        """Compare papers by relevance"""
         relevance_data = []
         for i, paper in enumerate(papers):
             relevance_score = len(paper.get('title', '')) / 100.0

@@ -1,8 +1,3 @@
-/**
- * BASE.JS - Core JavaScript functionality for AI Scholar
- * Handles common features like dark mode, loader, and basic interactions
- */
-
 class AIScholarBase {
     constructor() {
         this.init();
@@ -16,9 +11,6 @@ class AIScholarBase {
         this.setupAnimations();
     }
 
-    /**
-     * Dark Mode Functionality
-     */
     setupDarkMode() {
         const darkModeToggle = document.getElementById('darkModeToggle');
         if (!darkModeToggle) return;
@@ -46,9 +38,6 @@ class AIScholarBase {
         }
     }
 
-    /**
-     * Loader Functionality
-     */
     setupLoader() {
         this.loader = document.getElementById('loader-overlay');
         if (!this.loader) return;
@@ -78,9 +67,6 @@ class AIScholarBase {
         document.body.style.overflow = '';
     }
 
-    /**
-     * Smooth Scrolling for Anchor Links
-     */
     setupSmoothScrolling() {
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -96,9 +82,6 @@ class AIScholarBase {
         });
     }
 
-    /**
-     * Initialize Bootstrap Tooltips
-     */
     setupTooltips() {
         if (typeof bootstrap !== 'undefined') {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -108,9 +91,6 @@ class AIScholarBase {
         }
     }
 
-    /**
-     * Setup Page Animations
-     */
     setupAnimations() {
         // Fade in elements on scroll
         const observerOptions = {
@@ -132,11 +112,6 @@ class AIScholarBase {
         });
     }
 
-    /**
-     * Utility Functions
-     */
-    
-    // Show notification
     showNotification(message, type = 'info', duration = 5000) {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;

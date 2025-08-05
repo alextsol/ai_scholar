@@ -26,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (window.SearchHistory) {
       window.SearchHistory.updateHistoryTabs();
     }
-    console.log("SearchHistory updated.");
   });
 
   const searchForm = document.getElementById("searchForm");

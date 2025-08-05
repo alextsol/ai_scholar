@@ -22,9 +22,6 @@ class SearchPage {
         this.setupResultFiltering();
     }
 
-    /**
-     * Search Form Setup
-     */
     setupSearchForm() {
         this.searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -83,9 +80,6 @@ class SearchPage {
         }
     }
 
-    /**
-     * Form Validation
-     */
     setupFormValidation() {
         const inputs = this.searchForm.querySelectorAll('input[required], select[required]');
         
@@ -152,9 +146,6 @@ class SearchPage {
         if (feedbackElement) feedbackElement.remove();
     }
 
-    /**
-     * Auto-save Form State
-     */
     setupAutoSave() {
         const formInputs = this.searchForm.querySelectorAll('input, select');
         
@@ -172,9 +163,6 @@ class SearchPage {
         });
     }
 
-    /**
-     * Search Suggestions
-     */
     async showSearchSuggestions(event) {
         const query = event.target.value.trim();
         if (query.length < 3) return;
@@ -358,8 +346,7 @@ class SearchPage {
         const link = item.querySelector('h4 a');
         if (link) {
             link.addEventListener('click', () => {
-                // Track click analytics
-                console.log('Paper clicked:', link.textContent);
+                // Track click analytics if needed
             });
         }
 

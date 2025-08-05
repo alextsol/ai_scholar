@@ -75,7 +75,6 @@ class OpenAlexProvider(ISearchProvider):
     def is_available(self) -> bool:
         """Check if OpenAlex API is available"""
         try:
-            # Test with a simple query
             test_response = requests.get(
                 self.base_url,
                 params={
@@ -102,7 +101,6 @@ class OpenAlexProvider(ISearchProvider):
         
         for attempt in range(max_retries):
             try:
-                # Rate limiting - ensure minimum time between requests
                 current_time = time.time()
                 time_since_last = current_time - self.last_request_time
                 if time_since_last < self.rate_limit_delay:

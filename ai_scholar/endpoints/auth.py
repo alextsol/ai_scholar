@@ -68,12 +68,10 @@ def logout():
 @login_required
 def profile():
     try:
-        # Use the user relationship to get searches instead of direct query
-        searches = current_user.searches[:20]  # Get first 20 searches
-        searches.sort(key=lambda x: x.created_at, reverse=True)  # Sort by date desc
+        searches = current_user.searches[:20]
+        searches.sort(key=lambda x: x.created_at, reverse=True)
     except Exception as e:
-        print(f"Error loading search history: {e}")
-        searches = []  # Fallback to empty list
+        searches = []
     
     return render_template('auth/profile.html', searches=searches)
 
@@ -82,30 +80,23 @@ def profile():
 def user_stats():
     """API endpoint for user statistics"""
     try:
-        # Get user's search statistics using relationships
         total_searches = len(current_user.searches)
-        
-        # Get unique providers used
         providers_used = len(set(search.backend for search in current_user.searches))
-        
-        # Get total results count (sum of all results_count)
         total_results = sum(search.results_count or 0 for search in current_user.searches)
             
         stats = {
             'totalSearches': total_searches,
-            'providersUsed': providers_used if providers_used > 0 else 4,  # Default to 4 available providers
+            'providersUsed': providers_used if providers_used > 0 else 4,
             'totalResults': int(total_results),
-            'avgResponseTime': '1.3s'  # Mock for now
+            'avgResponseTime': '1.3s'
         }
         
         return jsonify(stats)
         
     except Exception as e:
-        print(f"Error getting user stats: {e}")
-        # Fallback stats
         return jsonify({
             'totalSearches': 0,
-            'providersUsed': 4,
+            'providersUsed': 5,
             'totalResults': 0,
             'avgResponseTime': '1.3s'
         }), 200

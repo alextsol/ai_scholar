@@ -99,13 +99,11 @@ class ErrorHandler:
             else:
                 status_code = 400
             
-            # Include technical details if requested (for debugging)
             if include_details:
                 response_data['technical_message'] = str(error)
                 response_data['error_type'] = type(error).__name__
         
         else:
-            # Generic error handling
             logger.error(f"Unhandled error: {error}")
             response_data = {
                 'error': True,

@@ -1,7 +1,3 @@
-/**
- * Enhanced error handling for AI Scholar frontend
- */
-
 class ErrorHandler {
     constructor() {
         this.initializeErrorDisplay();
@@ -18,9 +14,6 @@ class ErrorHandler {
         }
     }
 
-    /**
-     * Display user-friendly error messages
-     */
     displayError(error, type = 'error') {
         const container = document.getElementById('error-container');
         if (!container) return;
@@ -101,9 +94,6 @@ class ErrorHandler {
         }, hideDelay);
     }
 
-    /**
-     * Format wait times in user-friendly format
-     */
     formatWaitTime(seconds) {
         if (seconds < 60) {
             return `${seconds} seconds`;

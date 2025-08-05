@@ -1,9 +1,6 @@
 import re
 import requests
 import logging
-from .arxvic_configs.semantic_scholar_api import SemanticScholarAPI
-from .arxvic_configs.citation_matcher import CitationMatcher
-from .arxvic_configs.paper_indexer import PaperIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -66,30 +63,3 @@ def extract_arxiv_ids(papers):
             if match:
                 paper['roi'] = match.group(1)
     return papers
-
-def update_papers_with_citations(papers):
-    if not PaperIndexer.has_arxiv_papers(papers):
-        return papers
-    
-    arxiv_ids, arxiv_id_to_index = PaperIndexer.create_arxiv_index(papers)
-    
-    api = SemanticScholarAPI()
-    papers_data = api.fetch_all_papers(arxiv_ids)
-    
-    _update_citations_from_data(papers, papers_data, arxiv_id_to_index)
-    
-    return papers
-
-def _update_citations_from_data(papers, papers_data, arxiv_id_to_index):
-    for paper_data in papers_data:
-        if not paper_data:
-            continue
-        
-        arxiv_id = CitationMatcher.extract_arxiv_id_from_paper(paper_data)
-        
-        if not arxiv_id:
-            arxiv_id = CitationMatcher.match_by_title(paper_data, papers, arxiv_id_to_index)
-        
-        if arxiv_id:
-            citation_count = paper_data.get('citationCount', 0)
-            CitationMatcher.update_paper_citation(papers, arxiv_id_to_index, arxiv_id, citation_count)

@@ -9,14 +9,12 @@ class ResultFilter {
     }
 
     setupEventListeners() {
-        // Setup event listeners for all filter selects
         document.addEventListener('change', (event) => {
             if (event.target.classList.contains('result-filter') || 
                 event.target.classList.contains('filter-select') ||
                 event.target.id === 'result-filter') {
                 const filterType = event.target.value;
                 const searchId = event.target.dataset.searchId;
-                console.log('Filter triggered:', filterType, 'searchId:', searchId);
                 this.filterResults(filterType, searchId);
             }
         });
@@ -38,30 +36,16 @@ class ResultFilter {
         }
 
         if (!resultsContainer) {
-            console.log('No results container found for filtering. SearchId:', searchId);
-            console.log('Available containers:', {
-                historyResults: document.querySelector(`#results-${searchId} .results-content`),
-                resultGrid: document.querySelector('.results-section .result-grid'),
-                resultsSection: document.querySelector('.results-section'),
-                resultsContainer: document.querySelector('.results-container')
-            });
             return;
         }
 
-        console.log('Found results container:', resultsContainer.className, 'for filter:', filterType);
-
         const resultGroups = resultsContainer.querySelectorAll('.result-group, .result-provider-section, .source-group');
         const allPapers = [];
-        const originalStructure = []; // Store original groups for default restore
+        const originalStructure = [];
 
-        console.log('Found result groups:', resultGroups.length);
-
-        // Collect all papers with their metadata
         resultGroups.forEach((group, groupIndex) => {
             const provider = this.getProviderFromGroup(group);
             const papers = group.querySelectorAll('.result-item, .result-card, .paper-item');
-            
-            console.log(`Provider: ${provider}, Papers found: ${papers.length}`);
             
             // Store original group structure
             const originalGroup = {
@@ -90,9 +74,6 @@ class ResultFilter {
             originalStructure.push(originalGroup);
         });
 
-        console.log('Total papers collected:', allPapers.length);
-
-        // Sort papers based on filter type
         this.sortPapers(allPapers, filterType);
 
         // Re-render results
@@ -159,8 +140,6 @@ class ResultFilter {
             }
         }
 
-        console.log('Extracted paper data:', { title, year, citations, provider });
-        
         return {
             title: title,
             year: year,

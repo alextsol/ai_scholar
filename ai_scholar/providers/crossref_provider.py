@@ -31,10 +31,8 @@ class CrossRefProvider(ISearchProvider):
             'order': 'desc'
         }
         
-        # Add filters for better quality results
         filters = []
         
-        # Filter for journal articles only (exclude book chapters, etc.)
         filters.append('type:journal-article')
         
         # Add year filters if specified
@@ -73,7 +71,6 @@ class CrossRefProvider(ISearchProvider):
     def is_available(self) -> bool:
         """Check if CrossRef API is available"""
         try:
-            # Test with a simple query
             headers = self._get_headers()
             test_response = requests.get(
                 self.base_url,

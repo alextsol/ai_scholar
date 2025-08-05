@@ -17,9 +17,6 @@ class ProfilePage {
         this.setupHistoryTab();
     }
 
-    /**
-     * Tab Management
-     */
     setupTabs() {
         const tabLinks = document.querySelectorAll('.profile-nav .nav-link');
         const tabPanes = document.querySelectorAll('.tab-pane');
@@ -94,21 +91,13 @@ class ProfilePage {
         }
     }
 
-    /**
-     * Profile Data Management
-     */
     refreshProfileData() {
         // Add any dynamic profile data loading here
-        console.log('Profile tab activated');
     }
 
-    /**
-     * Quick Stats
-     */
     async loadQuickStats() {
         const statsContainer = document.getElementById('userStats');
         if (!statsContainer) {
-            console.log('userStats container not found');
             return;
         }
 
@@ -163,7 +152,6 @@ class ProfilePage {
             
             return stats;
         } catch (error) {
-            console.log('Using fallback stats due to:', error.message);
             // Fallback data
             const userSearches = parseInt(document.querySelector('[data-user-searches]')?.dataset.userSearches) || 0;
             return {
@@ -178,7 +166,6 @@ class ProfilePage {
     displayStats(stats) {
         const statsContainer = document.getElementById('userStats');
         if (!statsContainer) {
-            console.error('userStats container not found');
             return;
         }
 
@@ -216,17 +203,12 @@ class ProfilePage {
         `;
 
         statsContainer.innerHTML = statsHTML;
-        console.log('Stats displayed successfully');
     }
 
     refreshStats() {
-        console.log('Refreshing stats...');
         this.loadQuickStats();
     }
 
-    /**
-     * Settings Management
-     */
     setupSettings() {
         // Theme setting
         const themeToggle = document.getElementById('themeToggle');
@@ -278,12 +260,8 @@ class ProfilePage {
 
     refreshSettings() {
         // Refresh any dynamic settings
-        console.log('Settings tab activated');
     }
 
-    /**
-     * Profile Actions
-     */
     setupProfileActions() {
         // Edit profile button
         const editProfileBtn = document.getElementById('editProfileBtn');
@@ -403,9 +381,6 @@ class ProfilePage {
         }
     }
 
-    /**
-     * History Tab Management
-     */
     setupHistoryTab() {
         // The history content will be loaded via iframe or AJAX
         // For now, we'll just handle the tab activation
@@ -419,9 +394,6 @@ class ProfilePage {
         }
     }
 
-    /**
-     * Utility Methods
-     */
     showLoading(elementId) {
         const element = document.getElementById(elementId);
         if (element) {

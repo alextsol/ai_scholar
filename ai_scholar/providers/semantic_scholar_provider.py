@@ -54,7 +54,6 @@ class SemanticScholarProvider(ISearchProvider):
     def is_available(self) -> bool:
         """Check if Semantic Scholar API is available"""
         try:
-            # Test with a simple query
             test_url = f"{self.base_url}/paper/search"
             headers = self._get_headers()
             
@@ -65,7 +64,7 @@ class SemanticScholarProvider(ISearchProvider):
                 timeout=10
             )
             
-            return test_response.status_code in [200, 429]  # 429 means rate limited but available
+            return test_response.status_code in [200, 429]
         except:
             return False
     
@@ -73,7 +72,6 @@ class SemanticScholarProvider(ISearchProvider):
         """Validate Semantic Scholar query"""
         if not query or not query.strip():
             return False
-        # Semantic Scholar requires at least 3 characters
         return len(query.strip()) >= 3
     
     def _get_headers(self) -> Dict[str, str]:
@@ -138,7 +136,6 @@ class SemanticScholarProvider(ISearchProvider):
         
         for paper in papers:
             try:
-                # Handle authors
                 authors_list = paper.get('authors', [])
                 if isinstance(authors_list, list):
                     author_names = []

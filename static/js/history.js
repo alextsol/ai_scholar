@@ -1,8 +1,3 @@
-/**
- * HISTORY.JS - Search History page functionality
- * Handles filtering, searching, view switching, and history management
- */
-
 class HistoryPage {
     constructor() {
         this.currentFilter = 'all';
@@ -19,9 +14,6 @@ class HistoryPage {
         this.applyInitialFilters();
     }
 
-    /**
-     * Backend Filters
-     */
     setupFilters() {
         const filterButtons = document.querySelectorAll('.filter-btn');
         
@@ -39,9 +31,6 @@ class HistoryPage {
         activeBtn.classList.add('active');
     }
 
-    /**
-     * Time Filters
-     */
     setupTimeFilters() {
         const timeButtons = document.querySelectorAll('.time-filter');
         
@@ -54,9 +43,6 @@ class HistoryPage {
         });
     }
 
-    /**
-     * Search Functionality
-     */
     setupSearch() {
         const searchInput = document.getElementById('historySearch');
         if (searchInput) {
@@ -69,9 +55,6 @@ class HistoryPage {
         }
     }
 
-    /**
-     * History Actions
-     */
     setupHistoryActions() {
         // Repeat search buttons
         document.addEventListener('click', (e) => {
@@ -229,9 +212,6 @@ class HistoryPage {
         }
     }
 
-    /**
-     * Filtering Logic
-     */
     applyInitialFilters() {
         // Apply time filter by default (last 7 days)
         this.applyAllFilters();
@@ -351,9 +331,6 @@ class HistoryPage {
         this.applyAllFilters();
     }
 
-    /**
-     * Utility Functions
-     */
     updateStats() {
         // Update the stats cards if needed
         const totalElement = document.querySelector('.stat-number');
