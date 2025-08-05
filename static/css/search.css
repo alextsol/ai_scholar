@@ -9,16 +9,17 @@
 
 /* Provider Status Section */
 .provider-status {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid var(--border-color);
+    background: var(--bs-secondary-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
     box-shadow: var(--shadow-sm);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .provider-status h3 {
-    color: var(--primary-color);
+    color: var(--bs-primary);
     font-weight: 600;
     margin-bottom: var(--spacing-md);
 }
@@ -31,7 +32,7 @@
 }
 
 .provider-badge {
-    background: linear-gradient(135deg, var(--success-color) 0%, #20c997 100%);
+    background: linear-gradient(135deg, var(--bs-success) 0%, #20c997 100%);
     color: white;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: 20px;
@@ -48,20 +49,21 @@
 
 /* Search Form */
 .search-form {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
     box-shadow: var(--shadow-md);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .search-form h2 {
-    color: var(--dark-color);
+    color: var(--bs-body-color);
     font-weight: 600;
     margin-bottom: var(--spacing-lg);
     padding-bottom: var(--spacing-md);
-    border-bottom: 2px solid var(--light-color);
+    border-bottom: 2px solid var(--bs-border-color);
 }
 
 .form-row {
@@ -78,7 +80,7 @@
 .form-group label {
     display: block;
     font-weight: 600;
-    color: var(--dark-color);
+    color: var(--bs-body-color);
     margin-bottom: var(--spacing-sm);
 }
 
@@ -86,17 +88,19 @@
 .form-group select {
     width: 100%;
     padding: var(--spacing-md);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     font-size: var(--font-size-base);
     transition: var(--transition-base);
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(35, 134, 54, 0.1);
 }
 
 .search-btn {

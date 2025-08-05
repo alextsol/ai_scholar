@@ -1,15 +1,8 @@
+/* Legacy styles - using CSS variables for better theme support */
 body {
-    background-color: #ffffff;
-    color: #212529;
-}
-
-body.dark-mode {
-    background-color: #121212;
-    color: #e0e0e0;
-}
-
-.navbar.dark-mode {
-    background-color: #1f1f1f !important;
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #loader {

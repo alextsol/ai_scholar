@@ -1,0 +1,565 @@
+/* ========================================
+   DARK MODE ENHANCEMENTS
+   Additional styles for improved dark mode experience
+   ======================================== */
+
+/* Scrollbar styling for dark mode */
+[data-bs-theme="dark"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--bs-secondary-bg);
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 4px;
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary-color);
+}
+
+/* Selection color for dark mode */
+[data-bs-theme="dark"] ::selection {
+    background-color: rgba(35, 134, 54, 0.3);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] ::-moz-selection {
+    background-color: rgba(35, 134, 54, 0.3);
+    color: var(--bs-body-color);
+}
+
+/* Code blocks and pre elements */
+[data-bs-theme="dark"] pre,
+[data-bs-theme="dark"] code {
+    background-color: var(--bs-tertiary-bg);
+    color: #f97583;
+    border: 1px solid var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] pre {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+}
+
+[data-bs-theme="dark"] code {
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+
+/* Links */
+[data-bs-theme="dark"] a {
+    color: #58a6ff;
+}
+
+[data-bs-theme="dark"] a:hover {
+    color: #79c0ff;
+}
+
+/* Tooltips */
+[data-bs-theme="dark"] .tooltip .tooltip-inner {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .tooltip.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .tooltip.bs-tooltip-start .tooltip-arrow::before {
+    border-left-color: var(--bs-dark);
+}
+
+[data-bs-theme="dark"] .tooltip.bs-tooltip-end .tooltip-arrow::before {
+    border-right-color: var(--bs-dark);
+}
+
+/* Popovers */
+[data-bs-theme="dark"] .popover {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .popover-header {
+    background-color: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .popover-body {
+    color: var(--bs-body-color);
+}
+
+/* Progress bars */
+[data-bs-theme="dark"] .progress-bar {
+    background-color: var(--bs-primary);
+}
+
+/* Nav tabs and pills */
+[data-bs-theme="dark"] .nav-tabs {
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link {
+    color: var(--bs-body-color);
+    border-color: transparent;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link:hover {
+    border-color: var(--bs-border-color);
+    isolation: isolate;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
+}
+
+[data-bs-theme="dark"] .nav-pills .nav-link.active {
+    background-color: var(--bs-primary);
+}
+
+/* Accordion */
+[data-bs-theme="dark"] .accordion-item {
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .accordion-button {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .accordion-button:not(.collapsed) {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    box-shadow: inset 0 -1px 0 var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .accordion-button::after {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Offcanvas */
+[data-bs-theme="dark"] .offcanvas {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .offcanvas-header {
+    border-color: var(--bs-border-color);
+}
+
+/* Toast */
+[data-bs-theme="dark"] .toast {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .toast-header {
+    background-color: var(--bs-tertiary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+/* Spinner customization */
+[data-bs-theme="dark"] .spinner-border {
+    color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .spinner-grow {
+    color: var(--bs-primary);
+}
+
+/* Image filters for dark mode */
+[data-bs-theme="dark"] img.invert-dark {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+/* Input group text */
+[data-bs-theme="dark"] .input-group-text {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+/* Close button */
+[data-bs-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Placeholder text */
+[data-bs-theme="dark"] .form-control::placeholder,
+[data-bs-theme="dark"] .form-select::placeholder {
+    color: var(--bs-secondary-color);
+    opacity: 1;
+}
+
+/* Custom focus ring for dark mode */
+[data-bs-theme="dark"] *:focus-visible {
+    outline: 2px solid rgba(35, 134, 54, 0.5);
+    outline-offset: 2px;
+}
+
+/* Smooth transitions for all theme-related properties */
+html {
+    transition: background-color 0.3s ease;
+}
+
+body {
+    transition: background-color 0.3s ease, 
+                color 0.3s ease;
+}
+
+[data-bs-theme="dark"] * {
+    transition: background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                color 0.3s ease,
+                box-shadow 0.3s ease !important;
+}
+
+/* Theme transition animation */
+@keyframes themeTransition {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.9; }
+    100% { opacity: 1; }
+}
+
+.theme-transitioning {
+    animation: themeTransition 0.3s ease-out;
+}
+
+/* Search-specific dark mode improvements */
+[data-bs-theme="dark"] .search-result-item {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .search-result-item:hover {
+    background-color: var(--bs-tertiary-bg);
+    border-color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .paper-title a {
+    color: #58a6ff;
+}
+
+[data-bs-theme="dark"] .paper-title a:hover {
+    color: #79c0ff;
+}
+
+[data-bs-theme="dark"] .paper-authors {
+    color: var(--bs-secondary-color);
+}
+
+[data-bs-theme="dark"] .paper-venue {
+    color: var(--bs-secondary-color);
+}
+
+[data-bs-theme="dark"] .citation-count {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .provider-badge {
+    background: linear-gradient(135deg, var(--bs-success) 0%, #20c997 100%);
+}
+
+/* History and Profile specific dark mode fixes */
+[data-bs-theme="dark"] .history-content {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .tab-pane.fade.show.active {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .tab-content {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .nav-tabs {
+    border-bottom-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+/* Additional history items styling */
+[data-bs-theme="dark"] .history-item {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .history-item-header {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .query-text {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .query-meta {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Global fallback for any missed white backgrounds */
+[data-bs-theme="dark"] * {
+    scrollbar-color: var(--bs-border-color) var(--bs-secondary-bg);
+}
+
+[data-bs-theme="dark"] .bg-white {
+    background-color: var(--bs-body-bg) !important;
+}
+
+[data-bs-theme="dark"] .bg-light {
+    background-color: var(--bs-secondary-bg) !important;
+}
+
+[data-bs-theme="dark"] .text-dark {
+    color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .text-black {
+    color: var(--bs-body-color) !important;
+}
+
+/* Ensure content areas have proper backgrounds */
+[data-bs-theme="dark"] .content,
+[data-bs-theme="dark"] .main-content,
+[data-bs-theme="dark"] .page-content {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Profile-specific dark mode fixes */
+[data-bs-theme="dark"] .profile-info-card {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .profile-actions-card {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .settings-card {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+/* Dashboard stat-card improvements for dark mode */
+[data-bs-theme="dark"] .stat-card {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-number,
+[data-bs-theme="dark"] .results-stat .stat-number,
+[data-bs-theme="dark"] .animate-on-scroll .stat-number {
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .stat-card h3,
+[data-bs-theme="dark"] .stat-card h4,
+[data-bs-theme="dark"] .stat-card h5 {
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-label,
+[data-bs-theme="dark"] .results-stat .stat-label {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Additional profile card elements */
+[data-bs-theme="dark"] .profile-card,
+[data-bs-theme="dark"] .info-card,
+[data-bs-theme="dark"] .actions-card {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+/* Dashboard and statistics styling */
+[data-bs-theme="dark"] .dashboard-card,
+[data-bs-theme="dark"] .stats-container {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* Ensure all numbers and counts are white in dark mode */
+[data-bs-theme="dark"] .count,
+[data-bs-theme="dark"] .number,
+[data-bs-theme="dark"] .stat-value,
+[data-bs-theme="dark"] .metric-value {
+    color: #ffffff !important;
+}
+
+/* Profile section headers and content */
+[data-bs-theme="dark"] .profile-section {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .section-header {
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .section-title {
+    color: var(--bs-primary) !important;
+}
+
+/* Form sections in profile */
+[data-bs-theme="dark"] .form-section {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+/* Settings form elements */
+[data-bs-theme="dark"] .settings-form,
+[data-bs-theme="dark"] .profile-form {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+/* Settings card header and info elements */
+[data-bs-theme="dark"] .settings-card-header {
+    background-color: var(--bs-tertiary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .info-group {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .field-group {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .info-cards {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+/* Info item and label styling */
+[data-bs-theme="dark"] .info-item {
+    background-color: var(--bs-secondary-bg) !important;
+    border-color: var(--bs-border-color) !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .info-label {
+    color: var(--bs-secondary-color) !important;
+}
+
+[data-bs-theme="dark"] .info-value {
+    color: #ffffff !important;
+}
+
+/* Card headers in general */
+[data-bs-theme="dark"] .card-header h5,
+[data-bs-theme="dark"] .card-header h4,
+[data-bs-theme="dark"] .card-header h3 {
+    color: #ffffff !important;
+}
+
+/* Profile info elements */
+[data-bs-theme="dark"] .profile-info,
+[data-bs-theme="dark"] .user-info {
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .profile-detail,
+[data-bs-theme="dark"] .user-detail {
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .profile-label,
+[data-bs-theme="dark"] .user-label {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Enhanced borders and outlines for dark mode */
+[data-bs-theme="dark"] .card,
+[data-bs-theme="dark"] .profile-info-card,
+[data-bs-theme="dark"] .profile-actions-card,
+[data-bs-theme="dark"] .settings-card,
+[data-bs-theme="dark"] .info-group,
+[data-bs-theme="dark"] .field-group,
+[data-bs-theme="dark"] .info-cards {
+    border: 1px solid var(--bs-border-color) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Better hover effects for dark mode */
+[data-bs-theme="dark"] .card:hover,
+[data-bs-theme="dark"] .profile-info-card:hover,
+[data-bs-theme="dark"] .profile-actions-card:hover,
+[data-bs-theme="dark"] .settings-card:hover,
+[data-bs-theme="dark"] .info-group:hover,
+[data-bs-theme="dark"] .field-group:hover {
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 4px 12px rgba(35, 134, 54, 0.2) !important;
+}
+
+/* Enhanced text styling for better readability */
+[data-bs-theme="dark"] .card-body,
+[data-bs-theme="dark"] .card-text,
+[data-bs-theme="dark"] p,
+[data-bs-theme="dark"] span,
+[data-bs-theme="dark"] div {
+    color: #ffffff !important;
+}
+
+/* Form text and labels in dark mode */
+[data-bs-theme="dark"] .form-text,
+[data-bs-theme="dark"] .form-label,
+[data-bs-theme="dark"] label {
+    color: #ffffff !important;
+}
+
+/* Help text and descriptions */
+[data-bs-theme="dark"] .text-muted,
+[data-bs-theme="dark"] .help-text,
+[data-bs-theme="dark"] .description {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Enhanced focus states for dark mode */
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus,
+[data-bs-theme="dark"] .btn:focus {
+    outline: 2px solid var(--bs-primary) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 0.2rem rgba(35, 134, 54, 0.25) !important;
+}

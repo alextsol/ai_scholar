@@ -36,7 +36,24 @@ class AIScholarBase {
             const theme = e.target.checked ? 'dark' : 'light';
             this.setTheme(theme);
             localStorage.setItem('theme', theme);
+            
+            // Trigger a custom event for other components to react to theme changes
+            document.dispatchEvent(new CustomEvent('themeChanged', { 
+                detail: { theme } 
+            }));
         });
+
+        // Listen for system theme changes
+        if (window.matchMedia) {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            mediaQuery.addEventListener('change', (e) => {
+                // Only apply system theme if user hasn't set a preference
+                if (!localStorage.getItem('theme')) {
+                    this.setTheme(e.matches ? 'dark' : 'light');
+                    darkModeToggle.checked = e.matches;
+                }
+            });
+        }
     }
 
     /**
@@ -44,13 +61,46 @@ class AIScholarBase {
      * @param {string} theme - 'dark' or 'light'
      */
     setTheme(theme) {
+        // Add transition class for smooth animation
+        document.body.classList.add('theme-transitioning');
+        
+        // Remove any existing theme classes
+        document.body.classList.remove('dark-mode', 'light-mode');
+        
+        // Set Bootstrap theme attribute
         document.documentElement.setAttribute('data-bs-theme', theme);
+        
+        // Add theme class to body for any custom styles
+        document.body.classList.add(`${theme}-mode`);
         
         // Update meta theme color for mobile browsers
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', theme === 'dark' ? '#1a1a1a' : '#ffffff');
+            metaThemeColor.setAttribute('content', theme === 'dark' ? '#0d1117' : '#ffffff');
         }
+
+        // Update theme icon
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            themeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // Update navbar toggler icon color for better visibility
+        const navbarToggler = document.querySelector('.navbar-toggler-icon');
+        if (navbarToggler) {
+            navbarToggler.style.filter = theme === 'dark' ? 
+                'invert(1) grayscale(100%) brightness(200%)' : '';
+        }
+
+        // Remove transition class after animation completes
+        setTimeout(() => {
+            document.body.classList.remove('theme-transitioning');
+        }, 300);
+
+        // Dispatch theme change event for other scripts
+        window.dispatchEvent(new CustomEvent('themeApplied', { 
+            detail: { theme } 
+        }));
     }
 
     /**

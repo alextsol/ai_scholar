@@ -9,43 +9,46 @@
 
 /* Search History Sidebar */
 .search-history-section {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-lg);
     height: fit-content;
     position: sticky;
     top: 20px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .search-history-section h5 {
-    color: var(--primary-color);
+    color: var(--bs-primary);
     font-weight: 600;
     margin-bottom: var(--spacing-md);
 }
 
 .search-history-item {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     margin-bottom: var(--spacing-sm);
     transition: var(--transition-base);
     cursor: pointer;
+    background-color: var(--bs-body-bg);
 }
 
 .search-history-item:hover {
-    border-color: var(--primary-color);
+    border-color: var(--bs-primary);
     box-shadow: var(--shadow-sm);
     transform: translateX(5px);
+    background-color: var(--bs-secondary-bg);
 }
 
 .search-history-item .query-text {
     font-weight: 600;
-    color: var(--dark-color);
+    color: var(--bs-body-color);
 }
 
 .search-history-item .search-meta {
     font-size: 0.85rem;
-    color: var(--secondary-color);
+    color: var(--bs-secondary-color);
 }
 
 .search-history-item .search-actions {
@@ -64,19 +67,20 @@
 
 /* Main Search Form */
 .main-search-section {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-xl);
     box-shadow: var(--shadow-md);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .main-search-section h3 {
-    color: var(--dark-color);
+    color: var(--bs-body-color);
     font-weight: 600;
     margin-bottom: var(--spacing-lg);
     padding-bottom: var(--spacing-md);
-    border-bottom: 2px solid var(--light-color);
+    border-bottom: 2px solid var(--bs-border-color);
 }
 
 .search-input-group {
@@ -87,6 +91,9 @@
     font-size: 1.1rem;
     padding: var(--spacing-md) var(--spacing-lg);
     border-radius: var(--border-radius) 0 0 var(--border-radius);
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
 }
 
 .search-input-group .btn {
