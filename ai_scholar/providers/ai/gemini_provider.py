@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any, List
 from ...interfaces.ai_interface import IAIProvider
 from ...config.providers_config import ProvidersConfig
 from ...utils.ai_utils import parse_ai_response, is_quota_error
+from .prompts import RANKING_PROMPT_TEMPLATE
 
 class GeminiProvider(IAIProvider):
     """Google Gemini AI provider implementation"""
@@ -97,6 +98,7 @@ class GeminiProvider(IAIProvider):
         self.quota_exceeded = False
         self.last_error_time = None
     
+    #TODO check if need to be removed
     def rank_papers(self, query: str, papers: List[Dict[str, Any]], limit: int = 10) -> List[Dict[str, Any]]:
         """Rank papers using Gemini AI"""
         if not papers:
@@ -111,58 +113,6 @@ class GeminiProvider(IAIProvider):
         
         # Parse AI response and return ranked papers
         return self._parse_ranking_response(response, papers, limit)
-    
-    def generate_summary(self, papers: List[Dict[str, Any]], query: str) -> str:
-        """Generate a summary of papers"""
-        if not papers:
-            return "No papers to summarize."
-        
-        summary_prompt = f"""
-        Based on the search query "{query}", please provide a comprehensive summary of these research papers:
-        
-        {self._format_papers_for_prompt(papers)}
-        
-        Please provide:
-        1. An overview of the main research themes
-        2. Key findings and contributions
-        3. Notable trends or patterns
-        4. Recommendations for further reading
-        
-        Keep the summary concise but informative.
-        """
-        
-        return self.generate_content(summary_prompt, "summary") or "Unable to generate summary."
-    
-    def generate_insights(self, papers: List[Dict[str, Any]], query: str) -> Dict[str, Any]:
-        """Generate research insights"""
-        if not papers:
-            return {"error": "No papers to analyze"}
-        
-        insights_prompt = f"""
-        Analyze these research papers for the query "{query}" and provide insights:
-        
-        {self._format_papers_for_prompt(papers)}
-        
-        Please provide a JSON response with:
-        {{
-            "main_themes": ["theme1", "theme2", ...],
-            "key_researchers": ["name1", "name2", ...],
-            "trending_topics": ["topic1", "topic2", ...],
-            "research_gaps": ["gap1", "gap2", ...],
-            "methodologies": ["method1", "method2", ...],
-            "future_directions": "text about future research directions"
-        }}
-        """
-        
-        response = self.generate_content(insights_prompt, "insights")
-        if response:
-            try:
-                import json
-                return json.loads(response)
-            except:
-                return {"insights": response}
-        
-        return {"error": "Unable to generate insights"}
     
     def _build_ranking_prompt(self, query: str, papers: List[Dict[str, Any]], limit: int) -> str:
         """Build enhanced prompt for intelligent paper ranking"""
@@ -183,98 +133,11 @@ Abstract: {abstract}
 ---
 """
         
-        return f"""
-You are an expert academic research assistant with deep knowledge across multiple scientific domains. Your task is to intelligently rank papers based on their relevance to the query: "{query}"
-
-CONTEXT: These papers have been collected from multiple academic sources (CrossRef, arXiv, Semantic Scholar, CORE, OpenAlex), deduplicated, and pre-filtered for quality. Your role is to provide the final AI-powered ranking with detailed explanations.
-
-RANKING CRITERIA (adaptive weighting based on paper source):
-1. SEMANTIC RELEVANCE (45%): How directly and comprehensively does the paper address the query topic?
-   - Look for exact keyword matches in title and abstract
-   - Consider conceptual relevance and related concepts
-   - Prefer papers that cover the core aspects of the query
-
-2. RESEARCH QUALITY (30%): Assess the rigor and methodology
-   - Clear research questions and hypotheses
-   - Appropriate methodology and experimental design
-   - Comprehensive literature review and citations
-   - Statistical significance and validation
-
-3. NOVELTY AND RECENCY (15%): Balance current relevance and innovation
-   - Recent papers (2020+) for emerging topics and cutting-edge research
-   - Novel approaches or breakthrough findings
-   - Innovative methodologies or fresh perspectives
-   - For arXiv papers: Consider potential impact and innovation over citation count
-
-4. IMPACT INDICATORS (10%): Consider available influence metrics
-   - For papers with citations: Citation count relative to publication year
-   - For arXiv papers: Focus on methodological innovation, comprehensive evaluation, and potential significance
-   - High-quality venues and author reputation when available
-   - Practical applications and reproducibility
-
-SPECIAL HANDLING FOR ARXIV PAPERS:
-- arXiv papers represent cutting-edge, often unpublished research
-- Lack of citations should NOT penalize ranking - instead focus on:
-  * Innovation and novelty of approach
-  * Comprehensiveness of experimental evaluation
-  * Clarity of methodology and potential impact
-  * Relevance to current research trends
-- Weight criteria as: Semantic Relevance (50%), Research Quality (35%), Novelty (15%), Impact (0%)
-
-ANALYSIS INSTRUCTIONS:
-- Read each abstract carefully to understand the actual contribution
-- Consider the query context - what would be most useful for someone researching "{query}"?
-- DO NOT bias against arXiv papers due to lack of citations - they often contain the most recent breakthroughs
-- Balance established, well-cited work with innovative recent research
-- For arXiv papers: Evaluate potential impact, methodological rigor, and innovation
-- For published papers: Consider both citation impact and research quality
-- Look for papers that would provide the best learning path for the topic
-- Consider both theoretical foundations and practical applications
-- Ensure a good mix of established knowledge and cutting-edge developments
-
-PAPERS TO ANALYZE:
-{papers_text}
-
-REQUIRED OUTPUT:
-Return EXACTLY the top {limit} papers ranked by overall relevance score. For each paper, provide:
-1. A relevance score (1-100) based on the criteria above
-2. A detailed, specific explanation (1-2 sentences) that explains:
-   - WHY this paper is relevant to "{query}" (be specific about connections)
-   - WHAT unique contribution, methodology, or findings it provides
-   - HOW it advances understanding or practical application of the topic
-   
-EXPLANATION REQUIREMENTS:
-- Make explanations SPECIFIC to the paper's actual content and contribution
-- Reference specific methodologies, findings, or innovations mentioned in abstracts
-- Avoid generic phrases like "this paper explores", "the authors investigate", or "this study examines"
-- Connect the paper's contribution directly to the search query
-- Explain the practical value for someone researching the topic
-- Use concrete details from the abstract when available
-- Be insightful and substantive, not just descriptive
-
-Format your response as a valid JSON array:
-[
-  {{
-    "rank": 1,
-    "title": "Exact title from the paper list",
-    "relevance_score": 95,
-    "explanation": "This paper is highly relevant to '{query}' because [specific reason based on abstract content]. The [specific methodology/innovation/finding] provides [practical benefit/theoretical advancement] that is essential for [specific application]."
-  }},
-  {{
-    "rank": 2,
-    "title": "Exact title from the paper list", 
-    "relevance_score": 88,
-    "explanation": "This work advances '{query}' through [specific approach from abstract]. The [specific findings/techniques] offer [concrete insights/tools] for [practical application]."
-  }}
-]
-
-CRITICAL REQUIREMENTS: 
-- Use the EXACT title as provided in the paper list
-- Keep explanations to 1-2 sentences (50-100 words maximum)
-- Base explanations on ACTUAL content from abstracts, not assumptions
-- Ensure relevance scores reflect genuine quality and relevance differences
-- Every explanation must be unique and specific to that paper's contribution
-"""
+        return RANKING_PROMPT_TEMPLATE.format(
+            query=query,
+            papers_text=papers_text,
+            limit=limit
+        )
     
     def _parse_ranking_response(self, response: str, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
         """Parse AI ranking response and return ranked papers with enhanced scoring"""
@@ -541,29 +404,3 @@ CRITICAL REQUIREMENTS:
             fallback_papers.append(paper_copy)
         
         return fallback_papers
-    
-    def _titles_match(self, title1: str, title2: str) -> bool:
-        """Check if two titles are similar enough to be considered the same paper"""
-        if not title1 or not title2:
-            return False
-        
-        # Simple similarity check - could be improved with fuzzy matching
-        title1_clean = title1.lower().strip()
-        title2_clean = title2.lower().strip()
-        
-        return title1_clean == title2_clean or title1_clean in title2_clean or title2_clean in title1_clean
-    
-    def _format_papers_for_prompt(self, papers: List[Dict[str, Any]]) -> str:
-        """Format papers for AI prompts"""
-        formatted = ""
-        for i, paper in enumerate(papers[:20]):  # Limit to avoid token overflow
-            formatted += f"""
-Paper {i+1}:
-- Title: {paper.get('title', 'N/A')}
-- Authors: {paper.get('authors', 'N/A')}
-- Year: {paper.get('year', 'N/A')}
-- Citations: {paper.get('citations', 'N/A')}
-- Abstract: {(paper.get('abstract') or 'N/A')[:200]}...
-
-"""
-        return formatted

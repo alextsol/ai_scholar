@@ -61,19 +61,3 @@ class SearchResult:
             created_at=created_at,
             aggregation_stats=data.get('aggregation_stats')
         )
-    
-    def get_top_papers(self, count: int) -> List[Paper]:
-        """Get top N papers from results"""
-        return self.papers[:count]
-    
-    def get_papers_with_explanations(self) -> List[Paper]:
-        """Get only papers that have AI explanations"""
-        return [paper for paper in self.papers if paper.explanation and paper.explanation.strip()]
-    
-    def get_success_rate(self) -> float:
-        """Calculate the success rate of AI processing"""
-        if not self.papers:
-            return 0.0
-        
-        papers_with_explanations = len(self.get_papers_with_explanations())
-        return papers_with_explanations / len(self.papers)

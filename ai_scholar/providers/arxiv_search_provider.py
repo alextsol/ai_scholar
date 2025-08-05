@@ -17,7 +17,6 @@ class ArxivSearchProvider(ISearchProvider):
             return []
         
         try:
-            # Build search parameters
             search_query = self._build_arxiv_query(query, min_year, max_year)
             
             params = {
@@ -44,7 +43,6 @@ class ArxivSearchProvider(ISearchProvider):
         return "arXiv"
     
     def is_available(self) -> bool:
-        """Check if arXiv API is available"""
         try:
             test_response = requests.get(self.base_url, timeout=10)
             return test_response.status_code == 200
@@ -52,22 +50,15 @@ class ArxivSearchProvider(ISearchProvider):
             return False
     
     def validate_query(self, query: str) -> bool:
-        """Validate arXiv query"""
         if not query or not query.strip():
             return False
-        # arXiv has a minimum query length
         return len(query.strip()) >= 3
     
     def _build_arxiv_query(self, query: str, min_year: Optional[int], max_year: Optional[int]) -> str:
-        """Build arXiv-specific query string"""
-        # Clean the query
         clean_query = query.strip()
         
-        # For machine learning, use a simpler approach
-        # Search in all fields (title, abstract, comments, etc.)
         arxiv_query = f"all:\"{clean_query}\""
         
-        # Add date filters if specified - use simpler format
         if min_year or max_year:
             if min_year and max_year:
                 arxiv_query += f" AND submittedDate:[{min_year}0101 TO {max_year}1231]"
@@ -79,7 +70,6 @@ class ArxivSearchProvider(ISearchProvider):
         return arxiv_query
     
     def _make_request(self, params: Dict[str, Any]) -> Optional[requests.Response]:
-        """Make request to arXiv API with retry logic"""
         max_retries = 3
         delay = 1
         
@@ -180,7 +170,7 @@ class ArxivSearchProvider(ISearchProvider):
                 # No citation count available from arXiv directly
                 paper['citations'] = 'N/A'
                 
-                if paper.get('title'):  # Only add if we have at least a title
+                if paper.get('title'): 
                     papers.append(paper)
                     
         except ET.ParseError as e:

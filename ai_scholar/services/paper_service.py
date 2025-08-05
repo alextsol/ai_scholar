@@ -212,8 +212,7 @@ class PaperService:
         """
         # Define which providers support citations
         citation_providers = [ProviderType.SEMANTIC_SCHOLAR.value, ProviderType.CROSSREF.value, 
-                             ProviderType.OPENALEX.value, ProviderType.CORE.value, 
-                             ProviderType.OPENCITATIONS.value]
+                             ProviderType.OPENALEX.value, ProviderType.CORE.value]
         all_providers = list(self.search_providers.keys())
         
         if ranking_mode == RankingMode.CITATIONS.value:
@@ -223,6 +222,7 @@ class PaperService:
             target_total = max(ai_result_limit * 10, 500)
             per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
             
+            per_provider_limits = {}
             for provider in providers_to_use:
                 if provider == ProviderType.SEMANTIC_SCHOLAR.value:
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
@@ -232,9 +232,6 @@ class PaperService:
                 elif provider == ProviderType.OPENALEX.value:
                     # OpenAlex has good coverage
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
-                elif provider == ProviderType.OPENCITATIONS.value:
-                    # OpenCitations excels in citation analysis and bibliometric data
-                    per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
                 else:
                     # Core and others get standard limit
                     per_provider_limits[provider] = per_provider_base
@@ -495,7 +492,7 @@ class PaperService:
         if year and year != 'Unknown':
             try:
                 pub_year = int(year)
-                current_year = 2024
+                current_year = 2025
                 if current_year - pub_year <= 10:
                     score += 0.1
             except:
@@ -719,54 +716,8 @@ class PaperService:
         return sorted_papers[:limit]
     
     def _rank_by_citations_with_diversity(self, papers: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
-        """Enhanced citation ranking that ensures OpenCitations representation when present"""
-        
-        opencitations_papers = [p for p in papers if p.get('source') == 'opencitations']
-        other_papers = [p for p in papers if p.get('source') != 'opencitations']
-        
-        if opencitations_papers and len(other_papers) > 0:
-            all_ranked = self._rank_by_citations(papers, limit * 2)
-            
-            min_opencitations = max(2, min(len(opencitations_papers), max(limit // 3, limit // 5)))
-            
-            top_opencitations = [p for p in all_ranked if p.get('source') == 'opencitations'][:min_opencitations]
-            
-            opencitations_titles = {p.get('title', '') for p in top_opencitations}
-            top_others = [p for p in all_ranked 
-                         if p.get('source') != 'opencitations' or p.get('title', '') not in opencitations_titles]
-            
-            final_papers = []
-            oc_used = 0
-            other_used = 0
-            
-            for paper in all_ranked:
-                if len(final_papers) >= limit:
-                    break
-                    
-                is_opencitations = paper.get('source') == 'opencitations'
-                
-                if is_opencitations and oc_used < min_opencitations:
-                    final_papers.append(paper)
-                    oc_used += 1
-                elif not is_opencitations and other_used < (limit - min_opencitations):
-                    final_papers.append(paper)
-                    other_used += 1
-            
-            remaining_slots = limit - len(final_papers)
-            if remaining_slots > 0:
-                used_titles = {p.get('title', '') for p in final_papers}
-                for paper in all_ranked:
-                    if len(final_papers) >= limit:
-                        break
-                    if paper.get('title', '') not in used_titles:
-                        final_papers.append(paper)
-            
-            logger.info(f"Citation ranking with diversity: {len(final_papers)} total "
-                       f"({oc_used} OpenCitations, {len(final_papers) - oc_used} others)")
-            
-            return final_papers[:limit]
-        else:
-            return self._rank_by_citations(papers, limit)
+        """Enhanced citation ranking with source diversity"""
+        return self._rank_by_citations(papers, limit)
     
     def _merge_ranked_with_details(self, ranked_papers: List[Dict[str, Any]], 
                                   all_papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

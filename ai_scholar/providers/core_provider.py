@@ -13,18 +13,12 @@ class COREProvider(ISearchProvider):
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
-        # Updated CORE API endpoints - they changed their API structure
         self.base_url = "https://api.core.ac.uk/v3"
         self.search_url = f"{self.base_url}/search/works"
-        
-        # Alternative working endpoints
+        self.discovery_url = f"{self.base_url}/discover"
         self.alt_search_url = "https://core.ac.uk/api-v2/search"  # v2 fallback
-        self.discovery_url = "https://api.core.ac.uk/v3/discover"  # Discovery endpoint
         
-        # Try the newer Discovery API endpoint as primary
-        self.primary_search_url = "https://api.core.ac.uk/v3/discover"
-        
-        self.rate_limit_delay = 2.0  # Slower rate to avoid rate limits
+        self.rate_limit_delay = 2.0 
         self.last_request_time = 0
     
     @handle_provider_error("CORE")
@@ -33,49 +27,47 @@ class COREProvider(ISearchProvider):
         if not self.validate_query(query):
             raise SearchError(f"Invalid query: {query}", "Please enter a valid search query with at least 3 characters.")
         
-        # Quick rate limit check
-        current_time = time.time()
-        time_since_last = current_time - self.last_request_time
-        if time_since_last < 1.0:
-            time.sleep(1.0 - time_since_last)
+        self._apply_rate_limit()
         
-        # Try multiple endpoints in order of preference
-        endpoints_to_try = [
+        # Try endpoints in order of preference
+        search_methods = [
             ("Discovery API", self._search_discovery),
-            ("Search API v3", self._search_v3),
-            ("Search API v2", self._search_v2),
-            ("Simple Search", self._search_simple)
+            ("Search API v3", self._search_v3), 
+            ("Search API v2", self._search_v2)
         ]
         
-        for endpoint_name, search_method in endpoints_to_try:
+        for endpoint_name, search_method in search_methods:
             try:
                 logger.info(f"CORE: Trying {endpoint_name}")
                 results = search_method(query, limit, min_year, max_year)
                 if results:
                     logger.info(f"CORE: {endpoint_name} succeeded with {len(results)} results")
                     return results
-                else:
-                    logger.info(f"CORE: {endpoint_name} returned no results")
+                logger.info(f"CORE: {endpoint_name} returned no results")
             except RateLimitError:
                 logger.warning(f"CORE: {endpoint_name} rate limited")
-                raise  # Don't continue if rate limited
+                raise 
             except Exception as e:
                 logger.warning(f"CORE: {endpoint_name} failed: {str(e)}")
                 continue
         
-        # If all endpoints fail, return empty results instead of raising exception
         logger.warning("CORE: All endpoints failed, returning empty results")
         return []
 
+    def _apply_rate_limit(self):
+        """Apply rate limiting"""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < 1.0:
+            time.sleep(1.0 - time_since_last)
+
     def _search_discovery(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Search using CORE Discovery API (newest endpoint)"""
         params = {
             'q': query.strip(),
             'limit': min(limit, 100),
             'offset': 0
         }
         
-        # Add year filters
         if min_year or max_year:
             year_filter = self._build_year_filter(min_year, max_year)
             if year_filter:
@@ -93,64 +85,20 @@ class COREProvider(ISearchProvider):
         
         return []
 
-    def _search_simple(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Simple search without API key - uses public endpoints"""
-        
-        # For now, return empty results to avoid complications
-        # CORE API seems to be having issues, so we'll skip it
-        logger.info("CORE: Skipping simple search - API unavailable")
-        return []
-    
     def _search_v3(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search using CORE v3 API"""
-        # Build better search query
-        search_terms = query.strip()
-        
-        # Build search parameters with better filtering
         params = {
-            'q': search_terms,
+            'q': self._build_search_query(query.strip(), min_year, max_year),
             'limit': min(limit * 2, 100),  # Get more results to filter
             'offset': 0,
             'sort': 'relevance'
         }
         
-        # Add year filters if specified
-        if min_year or max_year:
-            year_filter = self._build_year_filter(min_year, max_year)
-            if year_filter:
-                params['q'] = f"{params['q']} AND {year_filter}"
-        else:
-            # Default to more recent papers for better quality
-            from datetime import datetime
-            current_year = datetime.now().year
-            recent_filter = self._build_year_filter(current_year - 15, None)  # Last 15 years
-            if recent_filter:
-                params['q'] = f"{params['q']} AND {recent_filter}"
-        
-        # Make request
         response = self._make_request(self.search_url, params)
-        
-        if response and response.status_code == 200:
-            data = response.json()
-            papers = data.get('results', [])
-            if not papers:
-                logger.info(f"CORE v3 returned no results for query: {query}")
-                return []
-            
-            standardized = self._standardize_papers_v3(papers)
-            
-            # Apply quality filtering
-            quality_papers = self._filter_quality_papers(standardized)
-            
-            logger.info(f"CORE v3 found {len(quality_papers)} quality papers")
-            return quality_papers[:limit]
-        
-        logger.warning("CORE v3 API request failed or returned non-200 status")
-        raise APIUnavailableError("CORE", message="CORE v3 API request failed")
-    
+        return self._process_v3_response(response, query, limit)
+
     def _search_v2(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search using CORE v2 API as fallback"""
-        # Build search parameters for v2
         params = {
             'query': query.strip(),
             'page': 1,
@@ -158,22 +106,56 @@ class COREProvider(ISearchProvider):
             'apiKey': self.api_key if self.api_key else ''
         }
         
-        # Make request to v2 endpoint
         response = self._make_request(self.alt_search_url, params)
+        return self._process_v2_response(response, query)
+
+    def _build_search_query(self, query: str, min_year: Optional[int] = None, max_year: Optional[int] = None) -> str:
+        """Build optimized search query with year filters"""
+        if min_year or max_year:
+            year_filter = self._build_year_filter(min_year, max_year)
+            if year_filter:
+                return f"{query} AND {year_filter}"
+        else:
+            # Default to recent papers for better quality
+            from datetime import datetime
+            current_year = datetime.now().year
+            recent_filter = self._build_year_filter(current_year - 15, None)  # Last 15 years
+            if recent_filter:
+                return f"{query} AND {recent_filter}"
+        return query
+
+    def _process_v3_response(self, response, query: str, limit: int) -> List[Dict[str, Any]]:
+        """Process v3 API response"""
+        if not response or response.status_code != 200:
+            logger.warning("CORE v3 API request failed or returned non-200 status")
+            raise APIUnavailableError("CORE", message="CORE v3 API request failed")
         
-        if response and response.status_code == 200:
-            data = response.json()
-            papers = data.get('data', [])
-            if not papers:
-                logger.info(f"CORE v2 returned no results for query: {query}")
-                return []
-            
-            standardized = self._standardize_papers_v2(papers)
-            logger.info(f"CORE v2 found {len(standardized)} papers")
-            return standardized
+        data = response.json()
+        papers = data.get('results', [])
+        if not papers:
+            logger.info(f"CORE v3 returned no results for query: {query}")
+            return []
         
-        logger.warning("CORE v2 API request failed or returned non-200 status")
-        raise APIUnavailableError("CORE", message="CORE v2 API request failed")
+        standardized = self._standardize_papers_v3(papers)
+        quality_papers = self._filter_quality_papers(standardized)
+        logger.info(f"CORE v3 found {len(quality_papers)} quality papers")
+        return quality_papers[:limit]
+
+    def _process_v2_response(self, response, query: str) -> List[Dict[str, Any]]:
+        """Process v2 API response"""
+        if not response or response.status_code != 200:
+            logger.warning("CORE v2 API request failed or returned non-200 status")
+            raise APIUnavailableError("CORE", message="CORE v2 API request failed")
+        
+        data = response.json()
+        papers = data.get('data', [])
+        if not papers:
+            logger.info(f"CORE v2 returned no results for query: {query}")
+            return []
+        
+        standardized = self._standardize_papers_v2(papers)
+        logger.info(f"CORE v2 found {len(standardized)} papers")
+        return standardized
     
     def get_provider_name(self) -> str:
         return "CORE"
@@ -182,42 +164,27 @@ class COREProvider(ISearchProvider):
         """Check if CORE API is available"""
         try:
             headers = self._get_headers()
+            test_params = {'q': 'test', 'limit': 1}
             
-            # Try main v3 API
-            test_response = requests.get(
-                self.search_url,
-                params={'q': 'test', 'limit': 1},
-                headers=headers,
-                timeout=15
-            )
-            
-            # Consider 200, 401 (needs auth), and even 500 (service exists but has issues) as "available"
-            if test_response.status_code in [200, 401]:
+            # Try main v3 API first
+            response = requests.get(self.search_url, params=test_params, headers=headers, timeout=15)
+            if response.status_code in [200, 401]:
                 return True
             
-            # If v3 fails, try v2 API as fallback
-            if hasattr(self, 'alt_search_url'):
-                alt_response = requests.get(
-                    self.alt_search_url,
-                    params={'query': 'test', 'page': 1, 'pageSize': 1},
-                    headers=headers,
-                    timeout=15
-                )
-                return alt_response.status_code in [200, 401]
-            
-            return False
+            # Fallback to v2 API
+            v2_params = {'query': 'test', 'page': 1, 'pageSize': 1}
+            response = requests.get(self.alt_search_url, params=v2_params, headers=headers, timeout=15)
+            return response.status_code in [200, 401]
             
         except:
             return False
     
     def validate_query(self, query: str) -> bool:
-        """Validate CORE query"""
         if not query or not query.strip():
             return False
         return len(query.strip()) >= 2
     
     def _get_headers(self) -> Dict[str, str]:
-        """Get request headers with API key if available"""
         headers = {
             'User-Agent': 'AI-Scholar/1.0',
             'Accept': 'application/json'
@@ -229,7 +196,6 @@ class COREProvider(ISearchProvider):
         return headers
     
     def _build_year_filter(self, min_year: Optional[int], max_year: Optional[int]) -> str:
-        """Build year filter for CORE query"""
         if min_year and max_year:
             return f"yearPublished:[{min_year} TO {max_year}]"
         elif min_year:
@@ -239,13 +205,11 @@ class COREProvider(ISearchProvider):
         return ""
     
     def _make_request(self, url: str, params: Dict[str, Any]) -> Optional[requests.Response]:
-        """Make request to CORE API with better rate limiting"""
         max_retries = 2  # Reduced retries to avoid long waits
         base_delay = 3    # Longer base delay
         
         for attempt in range(max_retries):
             try:
-                # Better rate limiting - ensure minimum time between requests
                 current_time = time.time()
                 time_since_last = current_time - self.last_request_time
                 if time_since_last < self.rate_limit_delay:
@@ -313,96 +277,159 @@ class COREProvider(ISearchProvider):
         return None
     
     def _standardize_papers_v3(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Standardize papers to match expected schema"""
-        standardized = []
-        
-        for paper in papers:
-            try:
-                # Handle title
-                title = paper.get('title', 'No title')
-                
-                # Handle authors
-                authors_list = paper.get('authors', [])
-                if isinstance(authors_list, list):
-                    author_names = []
-                    for author in authors_list:
-                        if isinstance(author, dict):
-                            name = author.get('name', '')
-                        elif isinstance(author, str):
-                            name = author
-                        else:
-                            continue
-                        if name:
-                            author_names.append(name)
-                    authors_str = ', '.join(author_names) if author_names else 'Unknown'
+        """Standardize papers from v3 API to match expected schema"""
+        return [self._standardize_single_paper_v3(paper) for paper in papers if self._is_valid_paper(paper)]
+
+    def _standardize_papers_v2(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Standardize papers from v2 API to match expected schema"""
+        return [self._standardize_single_paper_v2(paper) for paper in papers if self._is_valid_paper(paper)]
+
+    def _is_valid_paper(self, paper: Dict[str, Any]) -> bool:
+        """Check if paper has minimum required fields"""
+        return paper.get('title') and paper.get('title').strip()
+
+    def _extract_authors(self, authors_data: Any, is_v2: bool = False) -> str:
+        """Extract and format author names from different API formats"""
+        if not authors_data:
+            return 'Unknown'
+            
+        if isinstance(authors_data, list):
+            author_names = []
+            for author in authors_data:
+                if isinstance(author, dict):
+                    if is_v2:
+                        name = author.get('name', '') or f"{author.get('firstname', '')} {author.get('surname', '')}".strip()
+                    else:
+                        name = author.get('name', '')
+                elif isinstance(author, str):
+                    name = author
                 else:
-                    authors_str = str(authors_list) if authors_list else 'Unknown'
-                
-                # Handle year
-                year = paper.get('yearPublished', 'Unknown')
-                if not year or year == 0:
-                    # Try to extract from date fields
-                    pub_date = paper.get('publishedDate') or paper.get('depositedDate')
-                    if pub_date:
-                        try:
-                            year = int(pub_date.split('-')[0])
-                        except:
-                            year = 'Unknown'
-                
-                # Handle abstract
-                abstract = paper.get('abstract', '')
-                
-                # Handle URLs
-                download_url = paper.get('downloadUrl', '')
-                fulltext_url = paper.get('fulltextUrls', {}).get('pdf', '')
-                url = download_url or fulltext_url or ''
-                
-                # Handle DOI
-                doi = paper.get('doi', '')
-                if doi and not url:
-                    url = f"https://doi.org/{doi}"
-                
-                # Handle citations (not typically available in CORE)
-                # CORE doesn't provide citation counts, so we'll use 'N/A' or estimate based on age
-                citation_count = paper.get('citationCount', 'N/A')
-                if citation_count == 'N/A' or citation_count == 0:
-                    # For display purposes, indicate that citation data is not available
-                    citation_count = 'N/A'
-                
-                # Handle repository/publisher info
-                repositories = paper.get('repositories', [])
-                repository_name = repositories[0].get('name', '') if repositories else ''
-                
-                standardized_paper = {
-                    'title': title,
-                    'authors': authors_str,
-                    'year': year,
-                    'abstract': abstract,
-                    'url': url,
-                    'citations': citation_count,
-                    'source': 'core',
-                    'provider': self.get_provider_name(),
-                    'doi': doi,
-                    'repository': repository_name,
-                    'language': paper.get('language', {}).get('code', ''),
-                    'subjects': paper.get('subjects', []),
-                    'publisher': paper.get('publisher', ''),
-                    'journal': paper.get('journals', [{}])[0].get('title', '') if paper.get('journals') else '',
-                    'oai_id': paper.get('oai', ''),
-                    'core_id': paper.get('id', ''),
-                    'published_date': paper.get('publishedDate', ''),
-                    'deposited_date': paper.get('depositedDate', '')
-                }
-                
-                standardized.append(standardized_paper)
-                
-            except Exception as e:
-                continue
+                    continue
+                if name:
+                    author_names.append(name)
+            return ', '.join(author_names) if author_names else 'Unknown'
         
-        return standardized
+        return str(authors_data) if authors_data else 'Unknown'
+
+    def _extract_year(self, paper: Dict[str, Any], is_v2: bool = False) -> str:
+        """Extract publication year from different API formats"""
+        if is_v2:
+            year = paper.get('year', 'Unknown')
+            if not year:
+                date_pub = paper.get('datePublished')
+                if date_pub:
+                    try:
+                        year = int(date_pub.split('-')[0])
+                    except:
+                        year = 'Unknown'
+        else:
+            year = paper.get('yearPublished', 'Unknown')
+            if not year or year == 0:
+                pub_date = paper.get('publishedDate') or paper.get('depositedDate')
+                if pub_date:
+                    try:
+                        year = int(pub_date.split('-')[0])
+                    except:
+                        year = 'Unknown'
+        return year
+
+    def _extract_url_and_doi(self, paper: Dict[str, Any], is_v2: bool = False) -> tuple:
+        """Extract URL and DOI from paper data"""
+        if is_v2:
+            download_url = paper.get('downloadUrl', '')
+            fulltext_urls = paper.get('fulltextUrls', [])
+            pdf_url = fulltext_urls[0] if fulltext_urls else ''
+            url = download_url or pdf_url or ''
+            doi = paper.get('doi', '') or paper.get('identifiers', {}).get('doi', '')
+        else:
+            download_url = paper.get('downloadUrl', '')
+            fulltext_url = paper.get('fulltextUrls', {}).get('pdf', '')
+            url = download_url or fulltext_url or ''
+            doi = paper.get('doi', '')
+        
+        if doi and not url:
+            url = f"https://doi.org/{doi}"
+        
+        return url, doi
+
+    def _standardize_single_paper_v3(self, paper: Dict[str, Any]) -> Dict[str, Any]:
+        """Standardize a single paper from v3 API"""
+        try:
+            title = paper.get('title', 'No title')
+            authors_str = self._extract_authors(paper.get('authors', []))
+            year = self._extract_year(paper)
+            abstract = paper.get('abstract', '')
+            url, doi = self._extract_url_and_doi(paper)
+            
+            repositories = paper.get('repositories', [])
+            repository_name = repositories[0].get('name', '') if repositories else ''
+            
+            return {
+                'title': title,
+                'authors': authors_str,
+                'year': year,
+                'abstract': abstract,
+                'url': url,
+                'citations': 'N/A',  # CORE doesn't provide citation counts
+                'source': 'core',
+                'provider': self.get_provider_name(),
+                'doi': doi,
+                'repository': repository_name,
+                'language': paper.get('language', {}).get('code', ''),
+                'subjects': paper.get('subjects', []),
+                'publisher': paper.get('publisher', ''),
+                'journal': paper.get('journals', [{}])[0].get('title', '') if paper.get('journals') else '',
+                'oai_id': paper.get('oai', ''),
+                'core_id': paper.get('id', ''),
+                'published_date': paper.get('publishedDate', ''),
+                'deposited_date': paper.get('depositedDate', '')
+            }
+        except Exception:
+            return None
+
+    def _standardize_single_paper_v2(self, paper: Dict[str, Any]) -> Dict[str, Any]:
+        """Standardize a single paper from v2 API"""
+        try:
+            title = paper.get('title', 'No title')
+            authors_str = self._extract_authors(paper.get('authors', []), is_v2=True)
+            year = self._extract_year(paper, is_v2=True)
+            abstract = paper.get('description', '') or paper.get('abstract', '')
+            url, doi = self._extract_url_and_doi(paper, is_v2=True)
+            
+            # Handle citations for v2
+            citation_count = paper.get('citedBy', 'N/A')
+            if isinstance(citation_count, list):
+                citation_count = len(citation_count)
+            elif citation_count == 'N/A' or citation_count == 0:
+                citation_count = 'N/A'
+            
+            repositories = paper.get('repositories', [])
+            repository_name = repositories[0].get('name', '') if repositories else ''
+            
+            return {
+                'title': title,
+                'authors': authors_str,
+                'year': year,
+                'abstract': abstract,
+                'url': url,
+                'citations': citation_count,
+                'source': 'core',
+                'provider': self.get_provider_name(),
+                'doi': doi,
+                'repository': repository_name,
+                'language': paper.get('language', ''),
+                'subjects': paper.get('subjects', []),
+                'publisher': paper.get('publisher', ''),
+                'journal': paper.get('journal', ''),
+                'oai_id': paper.get('oai', ''),
+                'core_id': paper.get('id', ''),
+                'published_date': paper.get('datePublished', ''),
+                'deposited_date': paper.get('depositedDate', '')
+            }
+        except Exception:
+            return None
     
     def _filter_quality_papers(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Filter papers for better quality"""
         quality_papers = []
         
         for paper in papers:
@@ -411,7 +438,6 @@ class COREProvider(ISearchProvider):
             if not title or len(title) < 10:
                 continue
                 
-            # Skip papers without authors
             authors = paper.get('authors', '')
             if not authors or authors == 'Unknown':
                 continue
@@ -455,7 +481,6 @@ class COREProvider(ISearchProvider):
         return quality_papers
 
     def get_paper_by_core_id(self, core_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific paper by CORE ID"""
         if not core_id:
             return None
         
@@ -475,92 +500,3 @@ class COREProvider(ISearchProvider):
             pass
         
         return None
-
-    def _standardize_papers_v2(self, papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Standardize papers from CORE v2 API to match expected schema"""
-        standardized = []
-        
-        for paper in papers:
-            try:
-                # Handle title
-                title = paper.get('title', 'No title')
-                
-                # Handle authors (v2 format is different)
-                authors_list = paper.get('authors', [])
-                if isinstance(authors_list, list):
-                    # In v2, authors might be strings or objects
-                    author_names = []
-                    for author in authors_list:
-                        if isinstance(author, str):
-                            author_names.append(author)
-                        elif isinstance(author, dict):
-                            name = author.get('name', '') or f"{author.get('firstname', '')} {author.get('surname', '')}".strip()
-                            if name:
-                                author_names.append(name)
-                    authors_str = ', '.join(author_names) if author_names else 'Unknown'
-                else:
-                    authors_str = str(authors_list) if authors_list else 'Unknown'
-                
-                # Handle year
-                year = paper.get('year', 'Unknown')
-                if not year:
-                    # Try to extract from datePublished
-                    date_pub = paper.get('datePublished')
-                    if date_pub:
-                        try:
-                            year = int(date_pub.split('-')[0])
-                        except:
-                            year = 'Unknown'
-                
-                # Handle abstract
-                abstract = paper.get('description', '') or paper.get('abstract', '')
-                
-                # Handle URLs - v2 API structure
-                download_url = paper.get('downloadUrl', '')
-                fulltext_urls = paper.get('fulltextUrls', [])
-                pdf_url = fulltext_urls[0] if fulltext_urls else ''
-                url = download_url or pdf_url or ''
-                
-                # Handle DOI
-                doi = paper.get('doi', '') or paper.get('identifiers', {}).get('doi', '')
-                if doi and not url:
-                    url = f"https://doi.org/{doi}"
-                
-                # Handle citations - v2 might have citedBy info
-                citation_count = paper.get('citedBy', 'N/A')
-                if isinstance(citation_count, list):
-                    citation_count = len(citation_count)
-                elif citation_count == 'N/A' or citation_count == 0:
-                    citation_count = 'N/A'
-                
-                # Handle repository info
-                repositories = paper.get('repositories', [])
-                repository_name = repositories[0].get('name', '') if repositories else ''
-                
-                standardized_paper = {
-                    'title': title,
-                    'authors': authors_str,
-                    'year': year,
-                    'abstract': abstract,
-                    'url': url,
-                    'citations': citation_count,
-                    'source': 'core',
-                    'provider': self.get_provider_name(),
-                    'doi': doi,
-                    'repository': repository_name,
-                    'language': paper.get('language', ''),
-                    'subjects': paper.get('subjects', []),
-                    'publisher': paper.get('publisher', ''),
-                    'journal': paper.get('journal', ''),
-                    'oai_id': paper.get('oai', ''),
-                    'core_id': paper.get('id', ''),
-                    'published_date': paper.get('datePublished', ''),
-                    'deposited_date': paper.get('depositedDate', '')
-                }
-                
-                standardized.append(standardized_paper)
-                
-            except Exception as e:
-                continue
-        
-        return standardized
