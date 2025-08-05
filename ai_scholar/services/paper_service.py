@@ -4,6 +4,7 @@ from ..interfaces.ranking_interface import IRankingProvider
 from ..models.paper import Paper
 from ..models.search_result import SearchResult
 from ..config.settings import Settings
+from ..enums import ProviderType, RankingMode
 import time
 import logging
 
@@ -210,10 +211,12 @@ class PaperService:
             Tuple of (providers_to_use, per_provider_limits)
         """
         # Define which providers support citations
-        citation_providers = ['semantic_scholar', 'crossref', 'openalex', 'core', 'opencitations']
+        citation_providers = [ProviderType.SEMANTIC_SCHOLAR.value, ProviderType.CROSSREF.value, 
+                             ProviderType.OPENALEX.value, ProviderType.CORE.value, 
+                             ProviderType.OPENCITATIONS.value]
         all_providers = list(self.search_providers.keys())
         
-        if ranking_mode == 'citations':
+        if ranking_mode == RankingMode.CITATIONS.value:
             # For citation-based ranking, focus on providers with citation data
             providers_to_use = [p for p in all_providers if p in citation_providers]
             
@@ -221,15 +224,15 @@ class PaperService:
             per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
             
             for provider in providers_to_use:
-                if provider == 'semantic_scholar':
+                if provider == ProviderType.SEMANTIC_SCHOLAR.value:
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
-                elif provider == 'crossref':
+                elif provider == ProviderType.CROSSREF.value:
                     # CrossRef is reliable for citation counts
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
-                elif provider == 'openalex':
+                elif provider == ProviderType.OPENALEX.value:
                     # OpenAlex has good coverage
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
-                elif provider == 'opencitations':
+                elif provider == ProviderType.OPENCITATIONS.value:
                     # OpenCitations excels in citation analysis and bibliometric data
                     per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
                 else:
@@ -239,7 +242,7 @@ class PaperService:
             logger.info(f"Citation mode: Using {len(providers_to_use)} providers with enhanced limits for citation data")
             logger.info(f"Provider limits: {per_provider_limits}")
             
-        elif ranking_mode == 'year':
+        elif ranking_mode == RankingMode.YEAR.value:
             # For newest papers ranking, use all providers but optimize for recency and coverage
             providers_to_use = all_providers
             
@@ -248,13 +251,13 @@ class PaperService:
             
             per_provider_limits = {}
             for provider in providers_to_use:
-                if provider == 'arxiv':
+                if provider == ProviderType.ARXIV.value:
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
-                elif provider == 'semantic_scholar':
+                elif provider == ProviderType.SEMANTIC_SCHOLAR.value:
                     per_provider_limits[provider] = min(per_provider_base * 1.8, Settings.MAX_PER_PROVIDER)
-                elif provider == 'openalex':
+                elif provider == ProviderType.OPENALEX.value:
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
-                elif provider == 'crossref':
+                elif provider == ProviderType.CROSSREF.value:
                     # CrossRef for published recent work
                     per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
                 else:
@@ -297,7 +300,7 @@ class PaperService:
         papers = None
         
         if isinstance(result, dict):
-            if backend_name == "arxiv":
+            if backend_name == ProviderType.ARXIV.value:
                 from ..utils.helpers import format_items
                 papers = format_items(result.get("results", []), result.get("mapping", {}))
             else:

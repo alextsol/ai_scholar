@@ -1,12 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, flash
 from flask_login import current_user, login_required
-from typing import Optional, Dict, Any, List
 from ..services.search_service import SearchService
 from ..services.paper_service import PaperService
 from ..models.search_request import SearchRequest
-from ..models.database import db, SearchHistory
-from ..utils.exceptions import AIScholarError, RateLimitError, APIUnavailableError, ValidationError
+from ..utils.exceptions import AIScholarError, RateLimitError
 from ..utils.error_handler import ErrorHandler
+from ..utils.web_helpers import WebHelpers
+from ..enums import SearchMode
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,6 @@ class WebController:
         """Register all web UI routes"""
         self.blueprint.add_url_rule('/', 'index', login_required(self.index), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/search', 'search_page', login_required(self.search_page), methods=['GET', 'POST'])
-        self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
-        
-        # History API endpoints for sidebar functionality
-        self.blueprint.add_url_rule('/history/delete/<int:search_id>', 'history_delete', login_required(self.delete_history_item), methods=['POST'])
-        self.blueprint.add_url_rule('/history/clear', 'history_clear_api', login_required(self.clear_history_api), methods=['POST'])
     
     def index(self):
         """Main search interface"""
@@ -61,10 +56,10 @@ class WebController:
                 query = request.form.get('query', '').strip()
                 mode = request.form.get('mode', '')
                 selected_backend = request.form.get('backend', '')
-                min_year = self._parse_int(request.form.get('min_year'))
-                max_year = self._parse_int(request.form.get('max_year'))
-                result_limit = self._parse_int(request.form.get('result_limit'), default=50)
-                ai_result_limit = self._parse_int(request.form.get('ai_result_limit'), default=50)
+                min_year = WebHelpers.parse_int(request.form.get('min_year'))
+                max_year = WebHelpers.parse_int(request.form.get('max_year'))
+                result_limit = WebHelpers.parse_int(request.form.get('result_limit'), default=50)
+                ai_result_limit = WebHelpers.parse_int(request.form.get('ai_result_limit'), default=50)
                 ranking_mode = request.form.get('ranking_mode', 'ai')
                 
                 context.update({
@@ -82,7 +77,7 @@ class WebController:
                     flash('Please enter a search query', 'error')
                     return render_template('index.html', **context)
                 
-                if mode == "aggregate":
+                if mode == SearchMode.AGGREGATE.value:
                     search_result = self.paper_service.aggregate_and_rank_papers(
                         query=query,
                         limit=result_limit,
@@ -127,7 +122,7 @@ class WebController:
                                 'explanation': getattr(paper, 'explanation', None)
                             })
                     
-                    results = self._group_results_by_source(
+                    results = WebHelpers.group_results_by_source(
                         papers_as_dicts, 
                         default_source=selected_backend or backend_used
                     )
@@ -144,7 +139,7 @@ class WebController:
                     backend_used = selected_backend or 'Unknown'
                 
                 # Save search history (moved outside the results check)
-                self._save_web_search_history(
+                WebHelpers.save_search_history(
                     query, selected_backend or mode, mode, 
                     result_limit, ai_result_limit, ranking_mode,
                     min_year, max_year, results_count,
@@ -203,145 +198,3 @@ class WebController:
         }
         
         return render_template('search.html', **context)
-
-    def _group_results_by_source(self, papers: List[Dict[str, Any]], default_source: str = "Unknown") -> List[Dict[str, Any]]:
-        """Group search results by their source"""
-        groups = {}
-        
-        for paper in papers:
-            if isinstance(paper, dict):
-                source = paper.get("source", default_source)
-                if source not in groups:
-                    groups[source] = []
-                
-                citation_count = paper.get('citations') or paper.get('citation') or 'N/A'
-                
-                paper_details = {
-                    'title': paper.get('title', 'No title'),
-                    'year': paper.get('year', 'Unknown year'),
-                    'authors': paper.get('authors', 'No authors'),
-                    'citations': citation_count,
-                    'url': paper.get('url', '#')
-                }
-                
-                if paper.get('explanation'):
-                    paper_details['explanation'] = paper.get('explanation')
-                
-                groups[source].append(paper_details)
-        
-        results = []
-        for source, papers in groups.items():
-            results.append({
-                'source': source,
-                'papers': papers
-            })
-        
-        return results
-    
-    def _parse_int(self, value: str, default: Optional[int] = None) -> Optional[int]:
-        if value and value.isdigit():
-            return int(value)
-        return default
-    
-    def _save_web_search_history(self, query: str, backend: str, mode: str,
-                                result_limit: int, ai_result_limit: int, ranking_mode: str,
-                                min_year: Optional[int], max_year: Optional[int],
-                                results_count: int, results: List[Dict[str, Any]]):
-        """Save web search to history"""
-        try:
-            # Check if user is authenticated
-            if not current_user.is_authenticated:
-                return
-            search_params = {
-                'min_year': min_year,
-                'max_year': max_year,
-                'result_limit': result_limit,
-                'ai_result_limit': ai_result_limit,
-                'ranking_mode': ranking_mode
-            }
-            
-            search_record = SearchHistory(
-                user_id=current_user.id,
-                query=query,
-                backend=backend,
-                mode=mode,
-                search_params=str(search_params),
-                results_count=results_count
-            )
-            
-            if results:
-                from flask import render_template_string
-                results_html = render_template_string('''
-                {% for result in results %}
-                    <div class="source-group" data-source="{{ result.source }}">
-                        <h3>{{ result.source.replace('_', ' ').title() }} ({{ result.papers|length }} papers)</h3>
-                        {% for paper in result.papers %}
-                            <div class="paper-item">
-                                <h4><a href="{{ paper.url }}" target="_blank">{{ paper.title }}</a></h4>
-                                <p><strong>Authors:</strong> {{ paper.authors }}</p>
-                                <p><strong>Year:</strong> {{ paper.year }} | <strong>Citations:</strong> {{ paper.citations }}</p>
-                                {% if paper.explanation %}
-                                    <p><strong>AI Ranking Explanation:</strong> {{ paper.explanation }}</p>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-                ''', results=results)
-                
-                search_record.results_html = results_html
-            
-            db.session.add(search_record)
-            db.session.commit()
-            
-        except Exception as e:
-            db.session.rollback()
-            pass
-
-    def history(self):
-        try:
-            # Get all searches for authenticated user with pagination
-            page = request.args.get('page', 1, type=int)
-            per_page = 20
-            
-            searches = db.session.query(SearchHistory).filter_by(
-                user_id=current_user.id
-            ).order_by(SearchHistory.created_at.desc()).paginate(
-                page=page, per_page=per_page, error_out=False
-            )
-            
-            return render_template('history.html', searches=searches)
-            
-        except Exception as e:
-            logger.error(f"Error loading search history: {e}")
-            flash('Error loading search history', 'error')
-            return redirect(url_for('web_main.index'))
-
-    def delete_history_item(self, search_id: int):
-        try:
-            search_record = db.session.query(SearchHistory).filter_by(
-                id=search_id, 
-                user_id=current_user.id
-            ).first()
-            
-            if not search_record:
-                return jsonify({'success': False, 'error': 'Search not found'}), 404
-            
-            db.session.delete(search_record)
-            db.session.commit()
-            
-            return jsonify({'success': True})
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': 'Failed to delete search'}), 500
-
-    def clear_history_api(self):
-        try:
-            db.session.query(SearchHistory).filter_by(user_id=current_user.id).delete()
-            db.session.commit()
-            return jsonify({'success': True})
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': 'Failed to clear history'}), 500

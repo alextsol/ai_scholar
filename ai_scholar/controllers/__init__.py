@@ -3,6 +3,8 @@ from flask import Flask
 from .search_controller import SearchController
 from .paper_controller import PaperController
 from .web_controller import WebController
+from .history_controller import HistoryController
+from .history_controller import HistoryController
 
 class ControllerRegistry:
     
@@ -26,6 +28,8 @@ class ControllerRegistry:
         
         if search_service and paper_service:
             self.controllers['web'] = WebController(search_service, paper_service)
+        
+        self.controllers['history'] = HistoryController()
         
         self._register_blueprints(app)
         

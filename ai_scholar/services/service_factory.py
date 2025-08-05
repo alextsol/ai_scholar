@@ -4,6 +4,7 @@ from ..services.paper_service import PaperService
 from ..services.ai_service import AIService
 from ..providers import provider_registry
 from ..config.settings import Settings
+from ..enums import ProviderType
 
 class ServiceFactory:
     """Factory for creating and managing services with proper dependencies"""
@@ -33,7 +34,7 @@ class ServiceFactory:
         search_providers = provider_registry.get_all_search_providers()
         
         if search_providers:
-            default_backend = 'crossref' if 'crossref' in search_providers else list(search_providers.keys())[0]
+            default_backend = ProviderType.CROSSREF.value if ProviderType.CROSSREF.value in search_providers else list(search_providers.keys())[0]
             self.services['search'] = SearchService(search_providers, default_backend)
     
     def _create_ai_service(self) -> None:

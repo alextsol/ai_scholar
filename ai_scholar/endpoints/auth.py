@@ -73,29 +73,3 @@ def profile():
         searches = []
     
     return render_template('auth/profile.html', searches=searches)
-
-@auth_bp.route('/api/user-stats')
-@login_required  
-def user_stats():
-    """API endpoint for user statistics"""
-    try:
-        total_searches = len(current_user.searches)
-        providers_used = len(set(search.backend for search in current_user.searches))
-        total_results = sum(search.results_count or 0 for search in current_user.searches)
-            
-        stats = {
-            'totalSearches': total_searches,
-            'providersUsed': providers_used if providers_used > 0 else 4,
-            'totalResults': int(total_results),
-            'avgResponseTime': '1.3s'
-        }
-        
-        return jsonify(stats)
-        
-    except Exception as e:
-        return jsonify({
-            'totalSearches': 0,
-            'providersUsed': 5,
-            'totalResults': 0,
-            'avgResponseTime': '1.3s'
-        }), 200

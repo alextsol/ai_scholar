@@ -4,6 +4,7 @@ from ..models.search_request import SearchRequest
 from ..models.search_result import SearchResult
 from ..models.paper import Paper
 from ..cache import get_cache_key, get_cached_result, cache_result, cleanup_expired_cache
+from ..enums import ProviderType
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import requests
 import time
@@ -130,7 +131,7 @@ class SearchService:
                           min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search with retry logic for reliability"""
         
-        if backend == "semantic_scholar":
+        if backend == ProviderType.SEMANTIC_SCHOLAR.value:
             time.sleep(random.uniform(2, 5))
         
         provider = self.search_providers[backend]
