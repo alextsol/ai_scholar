@@ -1,6 +1,5 @@
 import time
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from typing import Optional, Dict, Any, List
 from ...interfaces.ai_interface import IAIProvider
 from ...config.providers_config import ProvidersConfig
@@ -19,8 +18,8 @@ class GeminiProvider(IAIProvider):
         self.quota_exceeded = False
         self.last_error_time = None
         
-        # Initialize client
-        self.client = genai.Client(api_key=self.api_key)
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel(self.model_name)
     
     def generate_content(self, prompt: str, operation_type: str = "general") -> Optional[str]:
         """Generate content using Google Gemini with optimized settings"""
@@ -36,10 +35,9 @@ class GeminiProvider(IAIProvider):
                 top_p = ProvidersConfig.AI.TOP_P
                 max_tokens = self.max_tokens
             
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
                     temperature=temperature,
                     max_output_tokens=max_tokens,
                     top_p=top_p,
