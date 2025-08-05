@@ -10,7 +10,6 @@
 <div class="history-page">
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar with filters and stats -->
             <div class="col-lg-3">
                 <div class="history-sidebar">
                     <div class="sidebar-section">
@@ -71,7 +70,6 @@
                 </div>
             </div>
 
-            <!-- Main content area -->
             <div class="col-lg-9">
                 <div class="history-main">
                     <div class="history-header">
@@ -84,7 +82,6 @@
                         </div>
                     </div>
 
-                    <!-- History content -->
                     <div class="history-content">
                         {% if searches.items %}
                             <div id="historyList" class="history-list-view">
@@ -170,7 +167,6 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- Pagination -->
                             {% if searches.pages > 1 %}
                             <nav aria-label="History pagination" class="mt-4">
                                 <ul class="pagination justify-content-center">
