@@ -45,7 +45,6 @@ class WebHelpers:
     
     @staticmethod
     def parse_int(value: str, default: Optional[int] = None) -> Optional[int]:
-        """Parse integer value with default fallback"""
         if value and value.isdigit():
             return int(value)
         return default

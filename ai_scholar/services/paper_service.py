@@ -4,43 +4,31 @@ from ..interfaces.ranking_interface import IRankingProvider
 from ..models.paper import Paper
 from ..models.search_result import SearchResult
 from ..config.settings import Settings
-from ..enums import ProviderType, RankingMode
+from ..enums.providers import ProviderType
+from ..enums.search_modes import RankingMode
+from .paper_ranking_service import PaperRankingService
+from ..utils.paper_processing_utils import PaperProcessingUtils
 import time
 import logging
 
 logger = logging.getLogger(__name__)
 
 class PaperService:
-    """Service for handling paper aggregation, ranking, and analysis"""
+    CURRENT_YEAR = 2025
     
     def __init__(self, search_providers: Dict[str, Any], ai_provider: IAIProvider, 
                  ranking_provider: IRankingProvider):
         self.search_providers = search_providers
         self.ai_provider = ai_provider
         self.ranking_provider = ranking_provider
-    
+
     def aggregate_and_rank_papers(self, query: str, limit: int, ai_result_limit: int,
                                 ranking_mode: str, min_year: Optional[int] = None,
                                 max_year: Optional[int] = None) -> SearchResult:
-        """
-        Aggregate papers from multiple sources and rank them using AI with intelligent pre-filtering
-        
-        Args:
-            query: Search query
-            limit: Limit per source
-            ai_result_limit: Final number of results after ranking
-            ranking_mode: Mode for ranking ('ai', 'citations', 'year')
-            min_year: Minimum publication year
-            max_year: Maximum publication year
-            
-        Returns:
-            SearchResult with aggregated and ranked papers
-        """
         start_time = time.time()
         aggregated_papers = []
         sources_used = []
         
-        # Statistics for transparency
         stats = {
             'total_collected': 0,
             'after_pre_filter': 0,
@@ -57,7 +45,6 @@ class PaperService:
         max_papers_for_ai = Settings.MAX_PAPERS_FOR_AI
         
         for backend_name, backend_func in self.search_providers.items():
-            # Skip providers that don't support the ranking mode requirements
             if backend_name not in providers_to_use:
                 logger.info(f"Skipping {backend_name} (not in providers_to_use)")
                 continue
@@ -66,14 +53,13 @@ class PaperService:
                 provider_limit = per_provider_limits.get(backend_name, limit)
                 logger.info(f"Calling {backend_name} with limit {provider_limit}")
                 result = backend_func(query, provider_limit, min_year, max_year)
-                papers = self._extract_papers_from_result(result, backend_name)
+                papers = PaperProcessingUtils.extract_papers_from_result(result, backend_name)
                 logger.info(f"{backend_name} returned {len(papers) if papers else 0} papers")
                 
                 if papers:
                     stats['total_collected'] += len(papers)
-                    # Pre-filter each provider's results for quality
                     try:
-                        quality_papers = self._pre_filter_papers(papers, query, backend_name)
+                        quality_papers = PaperProcessingUtils.pre_filter_papers(papers, query, backend_name)
                         logger.info(f"{backend_name} after filtering: {len(quality_papers)} papers")
                         stats['providers_used'][backend_name] = {
                             'raw_count': len(papers),
@@ -83,7 +69,6 @@ class PaperService:
                         sources_used.append(backend_name)
                     except Exception as filter_error:
                         logger.error(f"Error filtering {backend_name} papers: {str(filter_error)}")
-                        # If filtering fails, use papers without filtering but with source info
                         for paper in papers:
                             paper['source'] = backend_name
                         stats['providers_used'][backend_name] = {
@@ -122,15 +107,15 @@ class PaperService:
         stats['after_pre_filter'] = len(aggregated_papers)
         
         if min_year is not None or max_year is not None:
-            aggregated_papers = self._filter_papers_by_year(
+            aggregated_papers = PaperProcessingUtils.filter_papers_by_year(
                 aggregated_papers, min_year, max_year
             )
         
-        unique_papers = self._remove_duplicates(aggregated_papers)
+        unique_papers = PaperProcessingUtils.remove_duplicates(aggregated_papers)
         stats['after_dedup'] = len(unique_papers)
         
         if len(unique_papers) > max_papers_for_ai:
-            pre_ranked = self._fast_pre_rank(unique_papers, query, max_papers_for_ai)
+            pre_ranked = PaperProcessingUtils.fast_pre_rank(unique_papers, query, max_papers_for_ai)
             stats['pre_ranking_applied'] = True
             stats['sent_to_ai'] = len(pre_ranked)
         else:
@@ -140,7 +125,7 @@ class PaperService:
         ranked_papers = []
         ranking_applied = False
         
-        if ranking_mode == 'ai' and self.ai_provider:
+        if ranking_mode == RankingMode.AI.value and self.ai_provider:
             try:
                 ai_start_time = time.time()
                 ranked_papers = self.ai_provider.rank_papers(
@@ -150,31 +135,28 @@ class PaperService:
                 stats['ai_processing_time'] = ai_processing_time
                 ranking_applied = True
                 
-                # Log performance metrics
                 logger.info(f"Aggregate search optimization: {stats['total_collected']} → "
                           f"{stats['after_dedup']} → {stats['sent_to_ai']} → {len(ranked_papers)} papers. "
                           f"AI processing: {ai_processing_time:.2f}s")
                 
             except Exception as e:
                 logger.warning(f"AI ranking failed, falling back to citations: {str(e)}")
-                # Fallback to citation-based ranking if AI fails
-                ranked_papers = self._rank_by_citations(pre_ranked, ai_result_limit)
-        elif ranking_mode == 'citations':
-            ranked_papers = self._rank_by_citations_with_diversity(pre_ranked, ai_result_limit)
+                ranked_papers = PaperRankingService.rank_by_citations(pre_ranked, ai_result_limit)
+        elif ranking_mode == RankingMode.CITATIONS.value:
+            ranked_papers = PaperRankingService.rank_by_citations(pre_ranked, ai_result_limit)
             ranking_applied = True
-        elif ranking_mode == 'year':
-            ranked_papers = self._rank_by_year(pre_ranked, ai_result_limit)
+        elif ranking_mode == RankingMode.YEAR.value:
+            ranked_papers = PaperRankingService.rank_by_year(pre_ranked, ai_result_limit)
             ranking_applied = True
         else:
             ranked_papers = pre_ranked[:ai_result_limit]
         
-        # Clean up temporary scoring fields
-        self._cleanup_temporary_fields(ranked_papers)
+        PaperProcessingUtils.cleanup_temporary_fields(ranked_papers)
         
-        final_papers = self._merge_ranked_with_details(ranked_papers, aggregated_papers)        # Convert dict papers to Paper objects
+        final_papers = PaperProcessingUtils.merge_ranked_with_details(ranked_papers, aggregated_papers)
+        
         paper_objects = []
         for paper_dict in final_papers[:ai_result_limit]:
-            # Create Paper object from dictionary
             paper_obj = Paper(
                 title=paper_dict.get('title', ''),
                 authors=paper_dict.get('authors', ''),
@@ -199,24 +181,11 @@ class PaperService:
         )
     
     def _optimize_provider_usage(self, ranking_mode: str, limit: int, ai_result_limit: int) -> tuple:
-        """
-        Optimize provider selection and limits based on ranking mode requirements
-        
-        Args:
-            ranking_mode: The ranking mode being used
-            limit: Base limit per provider
-            ai_result_limit: Final number of results needed
-            
-        Returns:
-            Tuple of (providers_to_use, per_provider_limits)
-        """
-        # Define which providers support citations
         citation_providers = [ProviderType.SEMANTIC_SCHOLAR.value, ProviderType.CROSSREF.value, 
                              ProviderType.OPENALEX.value, ProviderType.CORE.value]
         all_providers = list(self.search_providers.keys())
         
         if ranking_mode == RankingMode.CITATIONS.value:
-            # For citation-based ranking, focus on providers with citation data
             providers_to_use = [p for p in all_providers if p in citation_providers]
             
             target_total = max(ai_result_limit * 10, 500)
@@ -227,20 +196,16 @@ class PaperService:
                 if provider == ProviderType.SEMANTIC_SCHOLAR.value:
                     per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
                 elif provider == ProviderType.CROSSREF.value:
-                    # CrossRef is reliable for citation counts
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
                 elif provider == ProviderType.OPENALEX.value:
-                    # OpenAlex has good coverage
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
                 else:
-                    # Core and others get standard limit
                     per_provider_limits[provider] = per_provider_base
                     
             logger.info(f"Citation mode: Using {len(providers_to_use)} providers with enhanced limits for citation data")
             logger.info(f"Provider limits: {per_provider_limits}")
             
         elif ranking_mode == RankingMode.YEAR.value:
-            # For newest papers ranking, use all providers but optimize for recency and coverage
             providers_to_use = all_providers
             
             target_total = max(ai_result_limit * 8, 400)
@@ -255,7 +220,286 @@ class PaperService:
                 elif provider == ProviderType.OPENALEX.value:
                     per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
                 elif provider == ProviderType.CROSSREF.value:
-                    # CrossRef for published recent work
+                    per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
+                else:
+                    per_provider_limits[provider] = per_provider_base
+                    
+            logger.info(f"Year mode: Using {len(providers_to_use)} providers optimized for recent papers")
+            logger.info(f"Provider limits: {per_provider_limits}")
+            
+        else:
+            providers_to_use = all_providers
+            max_per_provider = min(limit, Settings.MAX_PER_PROVIDER)
+            per_provider_limits = {provider: max_per_provider for provider in providers_to_use}
+            logger.info(f"Standard mode: Using {len(providers_to_use)} providers with uniform limits")
+        
+        return providers_to_use, per_provider_limits
+    
+    def compare_papers(self, papers: List[Dict[str, Any]], 
+                      criteria: List[str]) -> Dict[str, Any]:
+        comparison_result = {
+            'papers': papers,
+            'criteria': criteria,
+            'comparison_matrix': {},
+            'summary': {}
+        }
+        
+        for criterion in criteria:
+            if criterion == 'citations':
+                comparison_result['comparison_matrix'][criterion] = self._compare_by_citations(papers)
+            elif criterion == 'year':
+                comparison_result['comparison_matrix'][criterion] = self._compare_by_year(papers)
+            elif criterion == 'relevance':
+                comparison_result['comparison_matrix'][criterion] = self._compare_by_relevance(papers)
+        
+        return comparison_result
+    
+    def _compare_by_citations(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        citation_data = []
+        for i, paper in enumerate(papers):
+            citations = paper.get('citations') or paper.get('citation') or 0
+            try:
+                citation_count = int(citations) if citations != 'N/A' else 0
+            except (ValueError, TypeError):
+                citation_count = 0
+            citation_data.append({'index': i, 'citations': citation_count})
+        
+        citation_data.sort(key=lambda x: x['citations'], reverse=True)
+        return {
+            'ranking': citation_data,
+            'highest': citation_data[0] if citation_data else None,
+            'average': sum(x['citations'] for x in citation_data) / len(citation_data) if citation_data else 0
+        }
+    
+    def _compare_by_year(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        year_data = []
+        for i, paper in enumerate(papers):
+            year = paper.get('year', 0)
+            try:
+                year_val = int(year) if year != 'Unknown year' else 0
+            except (ValueError, TypeError):
+                year_val = 0
+            year_data.append({'index': i, 'year': year_val})
+        
+        year_data.sort(key=lambda x: x['year'], reverse=True)
+        return {
+            'ranking': year_data,
+            'newest': year_data[0] if year_data else None,
+            'oldest': year_data[-1] if year_data else None,
+            'average': sum(x['year'] for x in year_data) / len(year_data) if year_data else 0
+        }
+    
+    def _compare_by_relevance(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        relevance_data = []
+        for i, paper in enumerate(papers):
+            relevance_score = len(paper.get('title', '')) / 100.0
+            relevance_data.append({'index': i, 'relevance': relevance_score})
+        
+        relevance_data.sort(key=lambda x: x['relevance'], reverse=True)
+        return {
+            'ranking': relevance_data,
+            'most_relevant': relevance_data[0] if relevance_data else None,
+            'average': sum(x['relevance'] for x in relevance_data) / len(relevance_data) if relevance_data else 0
+        }
+    
+    def aggregate_and_rank_papers(self, query: str, limit: int, ai_result_limit: int,
+                                ranking_mode: str, min_year: Optional[int] = None,
+                                max_year: Optional[int] = None) -> SearchResult:
+        start_time = time.time()
+        aggregated_papers = []
+        sources_used = []
+        
+        stats = {
+            'total_collected': 0,
+            'after_pre_filter': 0,
+            'after_dedup': 0,
+            'sent_to_ai': 0,
+            'providers_used': {},
+            'pre_ranking_applied': False
+        }
+        
+        providers_to_use, per_provider_limits = self._optimize_provider_usage(
+            ranking_mode, limit, ai_result_limit
+        )
+        
+        max_papers_for_ai = Settings.MAX_PAPERS_FOR_AI
+        
+        for backend_name, backend_func in self.search_providers.items():
+            if backend_name not in providers_to_use:
+                logger.info(f"Skipping {backend_name} (not in providers_to_use)")
+                continue
+                
+            try:
+                provider_limit = per_provider_limits.get(backend_name, limit)
+                logger.info(f"Calling {backend_name} with limit {provider_limit}")
+                result = backend_func(query, provider_limit, min_year, max_year)
+                papers = PaperProcessingUtils.extract_papers_from_result(result, backend_name)
+                logger.info(f"{backend_name} returned {len(papers) if papers else 0} papers")
+                
+                if papers:
+                    stats['total_collected'] += len(papers)
+                    try:
+                        quality_papers = PaperProcessingUtils.pre_filter_papers(papers, query, backend_name)
+                        logger.info(f"{backend_name} after filtering: {len(quality_papers)} papers")
+                        stats['providers_used'][backend_name] = {
+                            'raw_count': len(papers),
+                            'after_filter': len(quality_papers)
+                        }
+                        aggregated_papers.extend(quality_papers)
+                        sources_used.append(backend_name)
+                    except Exception as filter_error:
+                        logger.error(f"Error filtering {backend_name} papers: {str(filter_error)}")
+                        for paper in papers:
+                            paper['source'] = backend_name
+                        stats['providers_used'][backend_name] = {
+                            'raw_count': len(papers),
+                            'after_filter': len(papers)
+                        }
+                        aggregated_papers.extend(papers)
+                        sources_used.append(backend_name)
+                        logger.info(f"{backend_name} used without filtering: {len(papers)} papers")
+                else:
+                    logger.info(f"{backend_name} returned no papers")
+                    stats['providers_used'][backend_name] = {
+                        'raw_count': 0,
+                        'after_filter': 0
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error calling {backend_name}: {str(e)}")
+                stats['providers_used'][backend_name] = {
+                    'raw_count': 0,
+                    'after_filter': 0
+                }
+                continue
+        
+        if not aggregated_papers:
+            return SearchResult(
+                papers=[],
+                query=query,
+                total_found=0,
+                processing_time=time.time() - start_time,
+                ranking_mode=ranking_mode,
+                backends_used=sources_used,
+                aggregation_stats=stats
+            )
+        
+        stats['after_pre_filter'] = len(aggregated_papers)
+        
+        if min_year is not None or max_year is not None:
+            aggregated_papers = PaperProcessingUtils.filter_papers_by_year(
+                aggregated_papers, min_year, max_year
+            )
+        
+        unique_papers = PaperProcessingUtils.remove_duplicates(aggregated_papers)
+        stats['after_dedup'] = len(unique_papers)
+        
+        if len(unique_papers) > max_papers_for_ai:
+            pre_ranked = PaperProcessingUtils.fast_pre_rank(unique_papers, query, max_papers_for_ai)
+            stats['pre_ranking_applied'] = True
+            stats['sent_to_ai'] = len(pre_ranked)
+        else:
+            pre_ranked = unique_papers
+            stats['sent_to_ai'] = len(pre_ranked)
+        
+        ranked_papers = []
+        ranking_applied = False
+        
+        if ranking_mode == RankingMode.AI.value and self.ai_provider:
+            try:
+                ai_start_time = time.time()
+                ranked_papers = self.ai_provider.rank_papers(
+                    query, pre_ranked, ai_result_limit
+                )
+                ai_processing_time = time.time() - ai_start_time
+                stats['ai_processing_time'] = ai_processing_time
+                ranking_applied = True
+                
+                logger.info(f"Aggregate search optimization: {stats['total_collected']} → "
+                          f"{stats['after_dedup']} → {stats['sent_to_ai']} → {len(ranked_papers)} papers. "
+                          f"AI processing: {ai_processing_time:.2f}s")
+                
+            except Exception as e:
+                logger.warning(f"AI ranking failed, falling back to citations: {str(e)}")
+                ranked_papers = PaperRankingService.rank_by_citations(pre_ranked, ai_result_limit)
+        elif ranking_mode == RankingMode.CITATIONS.value:
+            ranked_papers = PaperRankingService.rank_by_citations(pre_ranked, ai_result_limit)
+            ranking_applied = True
+        elif ranking_mode == RankingMode.YEAR.value:
+            ranked_papers = PaperRankingService.rank_by_year(pre_ranked, ai_result_limit)
+            ranking_applied = True
+        else:
+            ranked_papers = pre_ranked[:ai_result_limit]
+        
+        PaperProcessingUtils.cleanup_temporary_fields(ranked_papers)
+        
+        final_papers = PaperProcessingUtils.merge_ranked_with_details(ranked_papers, aggregated_papers)
+        
+        paper_objects = []
+        for paper_dict in final_papers[:ai_result_limit]:
+            paper_obj = Paper(
+                title=paper_dict.get('title', ''),
+                authors=paper_dict.get('authors', ''),
+                abstract=paper_dict.get('abstract', ''),
+                year=paper_dict.get('year'),
+                url=paper_dict.get('url', ''),
+                citations=paper_dict.get('citations', 0),
+                source=paper_dict.get('source', ''),
+                published=paper_dict.get('published', ''),
+                explanation=paper_dict.get('explanation', '')
+            )
+            paper_objects.append(paper_obj)
+        
+        return SearchResult(
+            papers=paper_objects,
+            query=query,
+            total_found=len(final_papers),
+            processing_time=time.time() - start_time,
+            ranking_mode=ranking_mode,
+            backends_used=sources_used,
+            aggregation_stats=stats
+        )
+    
+    def _optimize_provider_usage(self, ranking_mode: str, limit: int, ai_result_limit: int) -> tuple:
+        citation_providers = [ProviderType.SEMANTIC_SCHOLAR.value, ProviderType.CROSSREF.value, 
+                             ProviderType.OPENALEX.value, ProviderType.CORE.value]
+        all_providers = list(self.search_providers.keys())
+        
+        if ranking_mode == RankingMode.CITATIONS.value:
+            providers_to_use = [p for p in all_providers if p in citation_providers]
+            
+            target_total = max(ai_result_limit * 10, 500)
+            per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
+            
+            per_provider_limits = {}
+            for provider in providers_to_use:
+                if provider == ProviderType.SEMANTIC_SCHOLAR.value:
+                    per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
+                elif provider == ProviderType.CROSSREF.value:
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                elif provider == ProviderType.OPENALEX.value:
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                else:
+                    per_provider_limits[provider] = per_provider_base
+                    
+            logger.info(f"Citation mode: Using {len(providers_to_use)} providers with enhanced limits for citation data")
+            logger.info(f"Provider limits: {per_provider_limits}")
+            
+        elif ranking_mode == RankingMode.YEAR.value:
+            providers_to_use = all_providers
+            
+            target_total = max(ai_result_limit * 8, 400)
+            per_provider_base = min(target_total // len(providers_to_use), Settings.MAX_PER_PROVIDER)
+            
+            per_provider_limits = {}
+            for provider in providers_to_use:
+                if provider == ProviderType.ARXIV.value:
+                    per_provider_limits[provider] = min(per_provider_base * 2, Settings.MAX_PER_PROVIDER)
+                elif provider == ProviderType.SEMANTIC_SCHOLAR.value:
+                    per_provider_limits[provider] = min(per_provider_base * 1.8, Settings.MAX_PER_PROVIDER)
+                elif provider == ProviderType.OPENALEX.value:
+                    per_provider_limits[provider] = min(per_provider_base * 1.5, Settings.MAX_PER_PROVIDER)
+                elif provider == ProviderType.CROSSREF.value:
                     per_provider_limits[provider] = min(per_provider_base * 1.3, Settings.MAX_PER_PROVIDER)
                 else:
                     per_provider_limits[provider] = per_provider_base
@@ -293,27 +537,20 @@ class PaperService:
         return comparison_result
     
     def _extract_papers_from_result(self, result: Any, backend_name: str) -> List[Dict[str, Any]]:
-        """Extract papers from search result based on backend format"""
-        papers = None
-        
-        if isinstance(result, dict):
-            if backend_name == ProviderType.ARXIV.value:
-                from ..utils.helpers import format_items
-                papers = format_items(result.get("results", []), result.get("mapping", {}))
-            else:
-                from ..utils.helpers import generic_requests_search
-                papers = generic_requests_search(
-                    result.get("url"), 
-                    result.get("params"), 
-                    mapping=result.get("mapping"), 
-                    extractor=result.get("extractor")
-                )
-        elif isinstance(result, list):
+        """
+        Extract papers from provider result. Modern providers return lists directly.
+        """
+        # All modern providers return List[Dict[str, Any]] directly
+        if isinstance(result, list):
             papers = result
+        else:
+            # Fallback for unexpected format
+            return []
         
         if not isinstance(papers, list) or not all(isinstance(paper, dict) for paper in papers):
             return []
         
+        # Ensure source is set
         for paper in papers:
             paper['source'] = backend_name
         

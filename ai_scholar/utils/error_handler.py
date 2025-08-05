@@ -1,6 +1,3 @@
-"""
-Centralized error handling utility for AI Scholar application
-"""
 import logging
 from typing import Tuple, Dict, Any, Optional
 from flask import jsonify

@@ -6,15 +6,12 @@ from ..providers import provider_registry
 from ..config.settings import Settings
 from ..enums import ProviderType
 
-class ServiceFactory:
-    """Factory for creating and managing services with proper dependencies"""
-    
+class ServiceFactory:    
     def __init__(self):
         self.services: Dict[str, Any] = {}
         self._initialized = False
     
     def initialize_services(self, config: Optional[Any] = None) -> None:
-        """Initialize all services with their dependencies"""
         if self._initialized:
             return
         
@@ -30,7 +27,6 @@ class ServiceFactory:
         self._initialized = True
     
     def _create_search_service(self) -> None:
-        """Create search service with search providers"""
         search_providers = provider_registry.get_all_search_providers()
         
         if search_providers:
@@ -38,14 +34,12 @@ class ServiceFactory:
             self.services['search'] = SearchService(search_providers, default_backend)
     
     def _create_ai_service(self) -> None:
-        """Create AI service with AI provider"""
         ai_provider = provider_registry.get_ai_provider()
         
         if ai_provider:
             self.services['ai'] = AIService(ai_provider)
     
     def _create_paper_service(self) -> None:
-        """Create paper service with search and AI providers"""
         backends = {}
         search_providers = provider_registry.get_all_search_providers()
         
@@ -53,7 +47,6 @@ class ServiceFactory:
             def create_search_func(p):
                 def search_func(query, max_results=10, min_year=None, max_year=None):
                     try:
-                        # Call provider's search method with individual parameters
                         result = p.search(
                             query=query,
                             limit=max_results,

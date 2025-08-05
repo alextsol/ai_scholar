@@ -1,6 +1,5 @@
 {
     "python.analysis.extraPaths": [
-        "./utils/arxvic_configs",
         "./ai_scholar"
     ]
 }

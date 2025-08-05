@@ -2,8 +2,7 @@
 Utilities package - Shared utilities and helpers
 """
 from .ai_utils import parse_ai_response, is_quota_error, create_paper_summary, create_description_summary
-from .helpers import _safe_int_conversion
-from .validators import validate_query, validate_year_range
+from .paper_processing_utils import PaperProcessingUtils
 from .exceptions import (
     AIScholarError, ConfigurationError, ProviderError, RateLimitError,
     APIUnavailableError, AuthenticationError, SearchError, ValidationError,
@@ -14,7 +13,7 @@ from .error_handler import ErrorHandler, handle_api_error, handle_provider_error
 
 __all__ = [
     "parse_ai_response", "is_quota_error", "create_paper_summary", "create_description_summary",
-    "_safe_int_conversion", "validate_query", "validate_year_range",
+    "PaperProcessingUtils",
     "AIScholarError", "ConfigurationError", "ProviderError", "RateLimitError",
     "APIUnavailableError", "AuthenticationError", "SearchError", "ValidationError",
     "AIProcessingError", "QuotaExceededError", "NetworkError", "TimeoutError",

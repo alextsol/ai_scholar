@@ -10,9 +10,7 @@ import requests
 import time
 import random
 
-class SearchService:
-    """Service for handling paper search operations"""
-    
+class SearchService:    
     def __init__(self, search_providers: Dict[str, ISearchProvider], default_backend: str = 'crossref'):
         self.search_providers = search_providers
         self.default_backend = default_backend
@@ -29,12 +27,12 @@ class SearchService:
         """
         cleanup_expired_cache()
         
-        # Handle multiple backends or default to single backend
         backends = search_request.backends or [self.default_backend]
         if not backends:
             backends = [self.default_backend]
         
         # For now, use the first backend (can be enhanced later for multi-backend search)
+        #TODO what does this mean? 
         backend = backends[0]
         
         if backend not in self.search_providers:
@@ -95,7 +93,6 @@ class SearchService:
         if not papers:
             papers = []
         
-        # Convert dictionary papers to Paper objects
         paper_objects = []
         for paper_dict in papers:
             if isinstance(paper_dict, dict):
@@ -129,7 +126,6 @@ class SearchService:
     )
     def _search_with_retry(self, backend: str, query: str, limit: int, 
                           min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Search with retry logic for reliability"""
         
         if backend == ProviderType.SEMANTIC_SCHOLAR.value:
             time.sleep(random.uniform(2, 5))
@@ -142,20 +138,18 @@ class SearchService:
         return provider.search(query, limit, min_year, max_year)
     
     def get_available_backends(self) -> List[str]:
-        """Get list of available search backends"""
         return [name for name, provider in self.search_providers.items() 
                 if provider.is_available()]
     
     def validate_search_request(self, search_request: SearchRequest) -> bool:
-        """Validate a search request"""
         if not search_request.query or not search_request.query.strip():
             return False
         
-        # Handle multiple backends or default to single backend
         backends = search_request.backends or [self.default_backend]
         if not backends:
             backends = [self.default_backend]
         
+        #TODO what does this mean? 
         # For now, validate the first backend (can be enhanced later)
         backend = backends[0]
         if backend not in self.search_providers:
@@ -167,7 +161,6 @@ class SearchService:
         return provider.validate_query(search_request.query)
     
     def get_provider_info(self, backend: str) -> Dict[str, Any]:
-        """Get information about a specific provider"""
         if backend not in self.search_providers:
             return {}
         
