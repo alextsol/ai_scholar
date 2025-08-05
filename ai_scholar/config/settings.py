@@ -17,7 +17,7 @@ class Settings:
     DEFAULT_AI_RESULT_LIMIT = 50
     
     # Aggregate search optimization settings
-    MAX_PAPERS_FOR_AI = int(os.getenv("MAX_PAPERS_FOR_AI", "200"))  # Max papers to send to AI
+    MAX_PAPERS_FOR_AI = int(os.getenv("MAX_PAPERS_FOR_AI", "300"))  # Max papers to send to AI
     MAX_PER_PROVIDER = int(os.getenv("MAX_PER_PROVIDER", "100"))   # Max papers per provider
     MAX_PER_PROVIDER_AFTER_FILTER = int(os.getenv("MAX_PER_PROVIDER_AFTER_FILTER", "50"))  # After quality filtering
     PRE_FILTER_MIN_SCORE = float(os.getenv("PRE_FILTER_MIN_SCORE", "0.3"))  # Minimum quality score
@@ -32,9 +32,6 @@ class Settings:
     CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # 1 hour
     CACHE_MAX_SIZE = int(os.getenv("CACHE_MAX_SIZE", "1000"))
     
-    # Logging settings
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    LOG_FILE = os.getenv("LOG_FILE", "data/logs/ai_scholar.log")
     
     @classmethod
     def validate(cls):

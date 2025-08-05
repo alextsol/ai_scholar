@@ -1,17 +1,14 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from ..config.settings import Settings
-import os
 
 class AdminController:
-    """Controller for admin functionality"""
     
     def __init__(self):
         self.blueprint = Blueprint('admin', __name__, url_prefix='/admin')
         self._register_routes()
     
     def _register_routes(self):
-        """Register admin routes"""
         self.blueprint.add_url_rule('/', 'dashboard', login_required(self.dashboard), methods=['GET'])
         self.blueprint.add_url_rule('/optimization', 'optimization', login_required(self.optimization_settings), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/stats', 'stats', login_required(self.aggregation_stats), methods=['GET'])

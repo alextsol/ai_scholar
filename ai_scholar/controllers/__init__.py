@@ -5,14 +5,12 @@ from .paper_controller import PaperController
 from .web_controller import WebController
 
 class ControllerRegistry:
-    """Registry for managing all application controllers"""
     
     def __init__(self):
         self.controllers: Dict[str, object] = {}
         self._initialized = False
     
     def initialize_controllers(self, app: Flask, **services):
-        """Initialize all controllers with their dependencies"""
         if self._initialized:
             return
         
@@ -40,15 +38,12 @@ class ControllerRegistry:
                 app.register_blueprint(controller.blueprint)
     
     def get_controller(self, name: str):
-        """Get a controller by name"""
         return self.controllers.get(name)
     
     def get_all_controllers(self) -> Dict[str, object]:
-        """Get all registered controllers"""
         return self.controllers.copy()
     
     def is_initialized(self) -> bool:
-        """Check if controllers have been initialized"""
         return self._initialized
 
 controller_registry = ControllerRegistry()
