@@ -1,7 +1,6 @@
 import time
 import requests
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from typing import Optional, Dict, Any, List
 from .config import AIConfig
 from .utils.ai_utils import parse_ai_response, is_quota_error
@@ -90,11 +89,11 @@ class AIModelManager:
             self.models_config[model_name]["last_error_time"] = time.time()
     
     def _generate_google_content(self, config: Dict, prompt: str) -> Optional[str]:
-        client = genai.Client(api_key=config["api_key"])
-        response = client.models.generate_content(
-            model=config["model_name"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
+        genai.configure(api_key=config["api_key"])
+        model = genai.GenerativeModel(config["model_name"])
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
                 temperature=config["temperature"],
                 max_output_tokens=config["max_tokens"],
                 top_p=AIConfig.TOP_P,
