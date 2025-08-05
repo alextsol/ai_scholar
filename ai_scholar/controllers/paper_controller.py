@@ -17,7 +17,6 @@ class PaperController:
     def _register_routes(self):
         self.blueprint.add_url_rule('/aggregate', 'aggregate_papers', self.aggregate_papers, methods=['POST'])
         self.blueprint.add_url_rule('/rank', 'rank_papers', self.rank_papers, methods=['POST'])
-        self.blueprint.add_url_rule('/<paper_id>/details', 'get_paper_details', self.get_paper_details, methods=['GET'])
         self.blueprint.add_url_rule('/compare', 'compare_papers', self.compare_papers, methods=['POST'])
     
     @login_required
@@ -97,22 +96,6 @@ class PaperController:
             
         except Exception as e:
             return jsonify({'error': f'Ranking failed: {str(e)}'}), 500
-    
-    @login_required
-    def get_paper_details(self, paper_id: str):
-        try:
-            paper_details = self.paper_service.get_paper_details(paper_id)
-            
-            if not paper_details:
-                return jsonify({'error': 'Paper not found'}), 404
-            
-            return jsonify({
-                'success': True,
-                'paper': paper_details
-            })
-            
-        except Exception as e:
-            return jsonify({'error': f'Failed to get paper details: {str(e)}'}), 500
     
     @login_required
     def compare_papers(self):

@@ -12,7 +12,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class WebController:
-    """Controller handling web UI requests (traditional MVC views)"""
     
     def __init__(self, search_service: SearchService, paper_service: PaperService):
         self.search_service = search_service
@@ -23,26 +22,22 @@ class WebController:
     def _register_routes(self):
         """Register all web UI routes"""
         self.blueprint.add_url_rule('/', 'index', login_required(self.index), methods=['GET', 'POST'])
-        self.blueprint.add_url_rule('/results', 'results', self.results, methods=['GET'])
         self.blueprint.add_url_rule('/search', 'search_page', login_required(self.search_page), methods=['GET', 'POST'])
         self.blueprint.add_url_rule('/history', 'history', login_required(self.history), methods=['GET'])
         
-        # History API endpoints for sidebar functionality (keep these working)
+        # History API endpoints for sidebar functionality
         self.blueprint.add_url_rule('/history/delete/<int:search_id>', 'history_delete', login_required(self.delete_history_item), methods=['POST'])
         self.blueprint.add_url_rule('/history/clear', 'history_clear_api', login_required(self.clear_history_api), methods=['POST'])
     
     def index(self):
         """Main search interface"""
-        # Get recent searches for authenticated user
         recent_searches = []
         if current_user.is_authenticated:
             try:
                 recent_searches = current_user.get_recent_searches(limit=10)
             except Exception as e:
-                # Log error but don't fail the page load
                 pass
         
-        # Handle GET parameters for repeat search functionality
         query_param = request.args.get('query', '').strip()
         backend_param = request.args.get('backend', 'crossref')
         mode_param = request.args.get('mode', '')
@@ -157,7 +152,6 @@ class WebController:
                 )
                     
             except AIScholarError as e:
-                # Handle custom exceptions with user-friendly messages
                 ErrorHandler.log_error(e, "web_search", str(current_user.id) if current_user.is_authenticated else None)
                 flash(e.user_message, 'error')
                 
@@ -175,12 +169,7 @@ class WebController:
         
         return render_template('index.html', **context)
     
-    def results(self):
-        """Display search results (for AJAX requests)"""
-        return jsonify({'message': 'Results endpoint'})
-    
     def search_page(self):
-        """Dedicated search page with advanced options"""
         if request.method == 'POST':
             return self.index()
         
@@ -190,7 +179,6 @@ class WebController:
             try:
                 recent_searches = current_user.get_recent_searches(limit=10)
             except Exception as e:
-                # Log error but don't fail the page load
                 pass
         
         # Get URL parameters for pre-filling form (e.g., from repeat search)
@@ -251,7 +239,6 @@ class WebController:
         return results
     
     def _parse_int(self, value: str, default: Optional[int] = None) -> Optional[int]:
-        """Safely parse integer from form input"""
         if value and value.isdigit():
             return int(value)
         return default
@@ -309,11 +296,9 @@ class WebController:
             
         except Exception as e:
             db.session.rollback()
-            # Silently handle history save errors to not disrupt user experience
             pass
 
     def history(self):
-        """Display full search history page"""
         try:
             # Get all searches for authenticated user with pagination
             page = request.args.get('page', 1, type=int)
@@ -333,7 +318,6 @@ class WebController:
             return redirect(url_for('web_main.index'))
 
     def delete_history_item(self, search_id: int):
-        """API endpoint to delete a specific search history item"""
         try:
             search_record = db.session.query(SearchHistory).filter_by(
                 id=search_id, 
@@ -353,7 +337,6 @@ class WebController:
             return jsonify({'success': False, 'error': 'Failed to delete search'}), 500
 
     def clear_history_api(self):
-        """API endpoint to clear all search history"""
         try:
             db.session.query(SearchHistory).filter_by(user_id=current_user.id).delete()
             db.session.commit()

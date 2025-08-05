@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    """Main application settings"""
     
     # Application settings
     DEBUG = os.getenv("DEBUG", "False").lower() == "true"

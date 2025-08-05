@@ -4,14 +4,13 @@ from ..services.search_service import SearchService
 from ..models.search_request import SearchRequest
 from ..models.search_result import SearchResult
 from ..models.database import db, SearchHistory
-from ..utils.exceptions import AIScholarError, ValidationError, SearchError
-from ..utils.error_handler import ErrorHandler, handle_api_error
+from ..utils.exceptions import ValidationError
+from ..utils.error_handler import handle_api_error
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SearchController:
-    """Controller handling search-related HTTP requests"""
     
     def __init__(self, search_service: SearchService):
         self.search_service = search_service
@@ -19,7 +18,6 @@ class SearchController:
         self._register_routes()
     
     def _register_routes(self):
-        """Register all search-related routes"""
         self.blueprint.add_url_rule('/api', 'api_search', self.api_search, methods=['POST'])
         self.blueprint.add_url_rule('/history', 'search_history', self.get_search_history, methods=['GET'])
         self.blueprint.add_url_rule('/history/<int:search_id>', 'get_search_details', self.get_search_details, methods=['GET'])
@@ -27,7 +25,6 @@ class SearchController:
     @login_required
     @handle_api_error
     def api_search(self):
-        """Handle API search requests"""
         data = request.get_json()
         if not data:
             raise ValidationError("No data provided", user_message="Please provide search parameters.")
@@ -61,7 +58,6 @@ class SearchController:
     
     @login_required
     def get_search_history(self):
-        """Get user's search history"""
         try:
             page = request.args.get('page', 1, type=int)
             per_page = request.args.get('per_page', 10, type=int)
@@ -82,7 +78,6 @@ class SearchController:
     
     @login_required
     def get_search_details(self, search_id: int):
-        """Get details of a specific search"""
         try:
             search = db.session.query(SearchHistory).filter_by(
                 id=search_id, 
@@ -98,9 +93,7 @@ class SearchController:
             return jsonify({'error': f'Failed to get search details: {str(e)}'}), 500
     
     def _save_search_history(self, search_request: SearchRequest, search_result: SearchResult):
-        """Save search to history"""
         try:
-            # Get the first backend from the list, or 'default'
             backend = (search_request.backends[0] if search_request.backends else 'default')
             
             search_record = SearchHistory(

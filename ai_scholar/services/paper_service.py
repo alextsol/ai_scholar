@@ -271,9 +271,6 @@ class PaperService:
         
         return providers_to_use, per_provider_limits
     
-    def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information about a specific paper"""
-        return None
     
     def compare_papers(self, papers: List[Dict[str, Any]], 
                       criteria: List[str]) -> Dict[str, Any]:

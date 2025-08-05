@@ -36,15 +36,12 @@ class IAIProvider(ABC):
     
     @abstractmethod
     def get_provider_name(self) -> str:
-        """Return the name of this AI provider"""
         pass
     
     @abstractmethod
     def is_available(self) -> bool:
-        """Check if the provider is currently available"""
         pass
     
     @abstractmethod
     def get_optimal_batch_size(self, operation_type: str = "general") -> int:
-        """Get the optimal batch size for this provider"""
         pass

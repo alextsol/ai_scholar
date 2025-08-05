@@ -1,8 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from ..models import db, User, SearchHistory
+from ..models import db, User
 from ..forms import LoginForm, RegistrationForm
-from sqlalchemy import func
 
 auth_bp = Blueprint('auth', __name__)
 

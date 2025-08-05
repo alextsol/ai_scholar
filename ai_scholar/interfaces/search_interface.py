@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 
 class ISearchProvider(ABC):
-    """Abstract interface for search providers (arXiv, Semantic Scholar, etc.)"""
+    """Abstract interface for search providers """
     
     @abstractmethod
     def search(self, query: str, limit: int, min_year: Optional[int] = None, max_year: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -22,12 +22,10 @@ class ISearchProvider(ABC):
     
     @abstractmethod
     def get_provider_name(self) -> str:
-        """Return the name of this search provider"""
         pass
     
     @abstractmethod
     def is_available(self) -> bool:
-        """Check if the provider is currently available"""
         pass
     
     def validate_query(self, query: str) -> bool:
