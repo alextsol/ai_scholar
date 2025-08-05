@@ -56,6 +56,7 @@ ai_scholar/
 │   ├── semantic_scholar_provider.py
 │   ├── crossref_provider.py
 │   ├── core_provider.py
+│   ├── opencitations_provider.py
 │   └── ai/
 │       ├── openrouter_provider.py
 │       └── gemini_provider.py
@@ -86,6 +87,7 @@ ai_scholar/
 - **Semantic Scholar** - AI-powered academic search (requires API key)
 - **CrossRef** - DOI and citation database (no API key required)
 - **CORE** - Open access repository (requires API key)
+- **OpenCitations** - Citation analysis and bibliometric data (no API key required)
 
 ### AI Providers
 - **Google Gemini** - Primary AI for ranking and analysis

@@ -10,7 +10,7 @@
                                     <li>
                                         <strong>{{ provider.replace('_', ' ').title() }}:</strong>
                                         {{ stats.raw_count }} → {{ stats.after_filter }} papers
-                                        {% if ranking_mode == 'citations' and provider in ['semantic_scholar', 'crossref', 'openalex'] %}
+                                        {% if ranking_mode == 'citations' and provider in ['semantic_scholar', 'crossref', 'openalex', 'opencitations'] %}
                                         <span class="badge bg-success ms-1">Citation-Enhanced</span>
                                         {% endif %}
                                     </li>
@@ -59,6 +59,7 @@
                         <option value="semantic_scholar" {% if selected_backend == 'semantic_scholar' %}selected{% endif %}>Semantic Scholar</option>
                         <option value="core" {% if selected_backend == 'core' %}selected{% endif %}>CORE</option>
                         <option value="openalex" {% if selected_backend == 'openalex' %}selected{% endif %}>OpenAlex</option>
+                        <option value="opencitations" {% if selected_backend == 'opencitations' %}selected{% endif %}>OpenCitations</option>
                     </select>
                 </div>
                 

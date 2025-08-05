@@ -10,6 +10,7 @@ from .semantic_scholar_provider import SemanticScholarProvider
 from .crossref_provider import CrossRefProvider
 from .core_provider import COREProvider
 from .openalex_provider import OpenAlexProvider
+from .opencitations_provider import OpenCitationsProvider
 
 # AI providers
 from .ai.gemini_provider import GeminiProvider
@@ -60,6 +61,9 @@ class ProviderRegistry:
         
         openalex_mailto = getattr(config, 'OPENALEX_MAILTO', 'support@ai-scholar.com')
         self.search_providers['openalex'] = OpenAlexProvider(openalex_mailto)
+        
+        # OpenCitations provider (no API key required)
+        self.search_providers['opencitations'] = OpenCitationsProvider()
     
     def _init_ai_providers(self, config: Any):
         """Initialize AI providers"""
