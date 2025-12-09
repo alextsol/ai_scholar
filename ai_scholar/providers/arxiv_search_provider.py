@@ -43,11 +43,7 @@ class ArxivSearchProvider(ISearchProvider):
         return "arXiv"
     
     def is_available(self) -> bool:
-        try:
-            test_response = requests.get(self.base_url, timeout=10)
-            return test_response.status_code == 200
-        except:
-            return False
+        return True
     
     def validate_query(self, query: str) -> bool:
         if not query or not query.strip():
